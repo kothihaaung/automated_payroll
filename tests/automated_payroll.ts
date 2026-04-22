@@ -78,9 +78,10 @@ describe("automated_payroll", () => {
             // Attempt to initialize for employerB using employerA's PDA
             await program.methods
                 .initializePayroll(budget)
-                .accounts({
+                .accountsStrict({
                     employer: employerB.publicKey,
                     payrollConfig: pdaA, // Incorrect PDA for employerB
+                    systemProgram: anchor.web3.SystemProgram.programId,
                 })
                 .signers([employerB])
                 .rpc();
