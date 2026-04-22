@@ -18,7 +18,12 @@ describe("automated_payroll", () => {
             employer.publicKey,
             anchor.web3.LAMPORTS_PER_SOL
         );
-        await provider.connection.confirmTransaction(signature);
+        const latestBlockHash = await provider.connection.getLatestBlockhash();
+        await provider.connection.confirmTransaction({
+            blockhash: latestBlockHash.blockhash,
+            lastValidBlockHeight: latestBlockHash.lastValidBlockHeight,
+            signature: signature,
+        });
 
         // 1. Derive the PDA (Program Derived Address)
         const [payrollPda] = anchor.web3.PublicKey.findProgramAddressSync(
