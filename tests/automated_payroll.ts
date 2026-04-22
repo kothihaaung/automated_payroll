@@ -49,4 +49,47 @@ describe("automated_payroll", () => {
         expect(account.totalBudget.toString()).to.equal("5000");
         console.log("🚀 Payroll Config Initialized at:", payrollPda.toBase58());
     });
+
+    it("Fails if the PDA seeds don't match the employer!", async () => {
+        const employerA = anchor.web3.Keypair.generate();
+        const employerB = anchor.web3.Keypair.generate();
+
+        // Airdrop to employerB (the one who will try to sign)
+        const sig = await provider.connection.requestAirdrop(
+            employerB.publicKey,
+            anchor.web3.LAMPORTS_PER_SOL
+        );
+        const latestBlockHash = await provider.connection.getLatestBlockhash();
+        await provider.connection.confirmTransaction({
+            blockhash: latestBlockHash.blockhash,
+            lastValidBlockHeight: latestBlockHash.lastValidBlockHeight,
+            signature: sig,
+        });
+
+        // Derive PDA for employerA
+        const [pdaA] = anchor.web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("payroll_config"), employerA.publicKey.toBuffer()],
+            program.programId
+        );
+
+        const budget = new anchor.BN(5000);
+
+        try {
+            // Attempt to initialize for employerB using employerA's PDA
+            await program.methods
+                .initializePayroll(budget)
+                .accounts({
+                    employer: employerB.publicKey,
+                    payrollConfig: pdaA, // Incorrect PDA for employerB
+                })
+                .signers([employerB])
+                .rpc();
+
+            expect.fail("The transaction should have failed but it succeeded!");
+        } catch (error) {
+            // We expect a constraint seeds violation
+            expect(error.logs.join("")).to.include("ConstraintSeeds");
+            console.log("✅ Correctly rejected invalid PDA seeds!");
+        }
+    });
 });
