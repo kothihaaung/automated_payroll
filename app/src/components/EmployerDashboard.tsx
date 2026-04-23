@@ -36,6 +36,9 @@ export const EmployerDashboard = () => {
             // Fetch all employee accounts for this employer
             const employeeAccounts = await program.account.employee.all([
                 {
+                    dataSize: 97 // 8 + 32 + 32 + 8 + 8 + 8 + 1
+                },
+                {
                     memcmp: {
                         offset: 8, // Discriminator
                         bytes: wallet.publicKey.toBase58(),
@@ -80,6 +83,11 @@ export const EmployerDashboard = () => {
                     lamports: LAMPORTS_PER_SOL, // Fund 1 SOL
                 })
             );
+            
+            const latestBlockhash = await connection.getLatestBlockhash();
+            tx.recentBlockhash = latestBlockhash.blockhash;
+            tx.feePayer = wallet.publicKey;
+
             const sig = await wallet.signTransaction(tx);
             await connection.sendRawTransaction(sig.serialize());
             await refreshData();
@@ -292,13 +300,38 @@ export const EmployerDashboard = () => {
                         className="bg-gray-900 border border-gray-800 rounded-xl p-6"
                     >
                         <h3 className="text-lg font-bold text-white mb-4">Register Employee</h3>
-                        <form onSubmit={addEmployee} className="space-y-4">
+                        <form id="add-employee-form" onSubmit={addEmployee} className="space-y-4">
                             <div>
-                                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Wallet Address</label>
+                                <div className="flex justify-between items-end mb-2">
+                                    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Wallet Address</label>
+                                    <div className="flex gap-2">
+                                        <button 
+                                            type="button" 
+                                            onClick={() => {
+                                                const form = document.getElementById('add-employee-form') as HTMLFormElement;
+                                                if (form) form.employeeWallet.value = wallet?.publicKey.toBase58() || '';
+                                            }}
+                                            className="text-[10px] bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-black px-2 py-0.5 rounded transition-colors"
+                                        >
+                                            Use My ID
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => {
+                                                const form = document.getElementById('add-employee-form') as HTMLFormElement;
+                                                if (form) form.employeeWallet.value = anchor.web3.Keypair.generate().publicKey.toBase58();
+                                            }}
+                                            className="text-[10px] bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 px-2 py-0.5 rounded transition-colors"
+                                        >
+                                            Random
+                                        </button>
+                                    </div>
+                                </div>
                                 <input 
+                                    id="employeeWallet"
                                     name="employeeWallet"
                                     placeholder="Enter public key..."
-                                    className="w-full bg-black border border-gray-700 rounded-lg p-2.5 text-sm text-white focus:border-secondary focus:ring-1 focus:ring-secondary outline-none transition-all"
+                                    className="w-full bg-black border border-gray-700 rounded-lg p-2.5 text-sm text-white focus:border-secondary focus:ring-1 focus:ring-secondary outline-none transition-all font-mono"
                                     required
                                 />
                             </div>

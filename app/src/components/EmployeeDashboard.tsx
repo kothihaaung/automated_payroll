@@ -18,6 +18,9 @@ export const EmployeeDashboard = () => {
             // Fetch all employee accounts matching the connected wallet
             const accounts = await program.account.employee.all([
                 {
+                    dataSize: 97 // 8 + 32 + 32 + 8 + 8 + 8 + 1
+                },
+                {
                     memcmp: {
                         offset: 40, // 8 (discriminator) + 32 (employer pubkey)
                         bytes: wallet.publicKey.toBase58(),
