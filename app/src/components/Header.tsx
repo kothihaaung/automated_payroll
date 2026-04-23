@@ -1,6 +1,5 @@
 'use client';
 
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { motion } from 'framer-motion';
 
 export const Header = () => {
@@ -17,13 +16,6 @@ export const Header = () => {
                 <h1 className="text-2xl font-bold tracking-tight">
                     Payroll<span className="text-primary">DApp</span>
                 </h1>
-            </motion.div>
-            
-            <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-            >
-                <WalletMultiButton />
             </motion.div>
         </header>
     );

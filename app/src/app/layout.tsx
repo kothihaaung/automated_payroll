@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { SolanaWalletProvider } from "@/components/SolanaWalletProvider";
-import "@solana/wallet-adapter-react-ui/styles.css";
 import "@/styles/globals.css";
 
 export const metadata: Metadata = {
@@ -17,9 +15,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <div className="bg-mesh" />
-        <SolanaWalletProvider>
-          {children}
-        </SolanaWalletProvider>
+        {children}
       </body>
     </html>
   );

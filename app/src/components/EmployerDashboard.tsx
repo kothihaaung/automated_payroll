@@ -13,6 +13,8 @@ export const EmployerDashboard = () => {
     const [employees, setEmployees] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
+    const [isInitialized, setIsInitialized] = useState<boolean | null>(null);
+    const [budget, setBudget] = useState<number | null>(null);
 
     const refreshData = useCallback(async () => {
         if (!program || !wallet) return;
@@ -21,6 +23,15 @@ export const EmployerDashboard = () => {
             const vaultPda = getVaultPda(wallet.publicKey);
             const balance = await connection.getBalance(vaultPda);
             setVaultBalance(balance / LAMPORTS_PER_SOL);
+
+            const payrollPda = getPayrollPda(wallet.publicKey);
+            try {
+                const config = await program.account.payrollConfig.fetch(payrollPda);
+                setIsInitialized(true);
+                setBudget(config.totalBudget.toNumber() / LAMPORTS_PER_SOL);
+            } catch (e) {
+                setIsInitialized(false);
+            }
 
             // Fetch all employee accounts for this employer
             const employeeAccounts = await program.account.employee.all([
@@ -79,6 +90,69 @@ export const EmployerDashboard = () => {
         }
     };
 
+    const initializePayroll = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!wallet || !program) return;
+        
+        const form = e.target as HTMLFormElement;
+        const totalBudget = parseFloat(form.totalBudget.value);
+
+        setActionLoading(true);
+        try {
+            const payrollPda = getPayrollPda(wallet.publicKey);
+            const vaultPda = getVaultPda(wallet.publicKey);
+
+            await program.methods
+                .initializePayroll(new anchor.BN(totalBudget * LAMPORTS_PER_SOL))
+                .accounts({
+                    employer: wallet.publicKey,
+                    payrollConfig: payrollPda,
+                    vaultPda: vaultPda,
+                })
+                .rpc();
+            
+            await refreshData();
+        } catch (err) {
+            console.error("Error initializing payroll:", err);
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const disbursePayment = async (employeeWalletStr: string) => {
+        if (!wallet || !program) return;
+        
+        setActionLoading(true);
+        try {
+            const employeeWalletPubkey = new PublicKey(employeeWalletStr);
+            const vaultPda = getVaultPda(wallet.publicKey);
+            const { getEmployeePda } = usePayroll(); // Wait, getEmployeePda is already from hook? No, let's use the program directly or import it.
+            // Actually, we can get getEmployeePda from the hook destructuring at the top of the component. 
+            // I'll assume we have it or calculate it here.
+            const employeePda = anchor.web3.PublicKey.findProgramAddressSync(
+                [Buffer.from("employee"), wallet.publicKey.toBuffer(), employeeWalletPubkey.toBuffer()],
+                program.programId
+            )[0];
+
+            await program.methods
+                .disbursePayment()
+                .accounts({
+                    employer: wallet.publicKey,
+                    employeeWallet: employeeWalletPubkey,
+                    employeePda: employeePda,
+                    vaultPda: vaultPda,
+                })
+                .rpc();
+            
+            await refreshData();
+        } catch (err) {
+            console.error("Error disbursing payment:", err);
+            alert("Payment failed or not due yet.");
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
     const addEmployee = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!wallet || !program) return;
@@ -110,9 +184,34 @@ export const EmployerDashboard = () => {
         }
     };
 
-    if (loading) return (
+    if (loading || isInitialized === null) return (
         <div className="flex justify-center items-center h-64">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+    );
+
+    if (!isInitialized) return (
+        <div className="glass-card max-w-md mx-auto text-center">
+            <h2 className="text-2xl font-bold mb-4">Initialize Payroll System</h2>
+            <p className="text-gray-400 mb-6">Set your initial total budget to configure the smart contract.</p>
+            <form onSubmit={initializePayroll} className="space-y-4">
+                <input 
+                    name="totalBudget"
+                    type="number"
+                    step="0.1"
+                    placeholder="Total Budget (SOL)"
+                    className="w-full bg-white/5 border border-white/20 rounded-lg p-3 focus:border-primary outline-none"
+                    required
+                />
+                <button 
+                    type="submit"
+                    disabled={actionLoading}
+                    className="w-full btn-primary py-3 flex items-center justify-center gap-2"
+                >
+                    {actionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Wallet className="w-5 h-5" />}
+                    Initialize Contract
+                </button>
+            </form>
         </div>
     );
 
@@ -153,13 +252,13 @@ export const EmployerDashboard = () => {
                     className="glass-card"
                 >
                     <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                        <Plus className="w-5 h-5 text-secondary" /> Add New Employee
+                        <Plus className="w-5 h-5 text-secondary" /> Add Employee (Set Budget)
                     </h3>
                     <form onSubmit={addEmployee} className="space-y-3">
                         <input 
                             name="employeeWallet"
                             placeholder="Employee Wallet Address"
-                            className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm focus:border-primary outline-none"
+                            className="w-full bg-white/5 border border-white/20 rounded-lg p-2 text-sm focus:border-primary outline-none"
                             required
                         />
                         <div className="flex gap-2">
@@ -225,15 +324,22 @@ export const EmployerDashboard = () => {
                                         <p className="font-semibold">{emp.salary.toNumber() / LAMPORTS_PER_SOL} SOL / cycle</p>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <p className="text-[10px] text-gray-500 mb-1 uppercase tracking-wider">Payment Cycle Progress</p>
+                                <div className="text-right flex flex-col items-end gap-2">
+                                    <p className="text-[10px] text-gray-500 uppercase tracking-wider">Payment Cycle Progress</p>
                                     <div className="w-32 h-1.5 bg-white/10 rounded-full overflow-hidden">
                                         <motion.div 
                                             initial={{ width: 0 }}
-                                            animate={{ width: "65%" }}
+                                            animate={{ width: `${Math.min(100, Math.max(0, (Math.floor(Date.now() / 1000) - emp.lastPaid.toNumber()) / emp.interval.toNumber() * 100))}%` }}
                                             className="h-full bg-gradient-to-r from-primary to-secondary"
                                         />
                                     </div>
+                                    <button 
+                                        onClick={() => disbursePayment(emp.wallet.toBase58())}
+                                        disabled={actionLoading}
+                                        className="mt-2 text-xs px-3 py-1 border border-primary text-primary hover:bg-primary hover:text-black rounded transition-colors"
+                                    >
+                                        Disburse
+                                    </button>
                                 </div>
                             </motion.div>
                         ))}
