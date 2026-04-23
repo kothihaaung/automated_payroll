@@ -185,174 +185,232 @@ export const EmployerDashboard = () => {
     };
 
     if (loading || isInitialized === null) return (
-        <div className="flex justify-center items-center h-64">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <div className="flex justify-center items-center h-64 w-full">
+            <Loader2 className="w-10 h-10 animate-spin text-primary" />
         </div>
     );
 
     if (!isInitialized) return (
-        <div className="glass-card max-w-md mx-auto text-center">
-            <h2 className="text-2xl font-bold mb-4">Initialize Payroll System</h2>
-            <p className="text-gray-400 mb-6">Set your initial total budget to configure the smart contract.</p>
-            <form onSubmit={initializePayroll} className="space-y-4">
-                <input 
-                    name="totalBudget"
-                    type="number"
-                    step="0.1"
-                    placeholder="Total Budget (SOL)"
-                    className="w-full bg-white/5 border border-white/20 rounded-lg p-3 focus:border-primary outline-none"
-                    required
-                />
+        <div className="max-w-md mx-auto mt-12 bg-gray-900 border border-gray-800 rounded-xl p-8 text-center shadow-lg">
+            <div className="w-16 h-16 bg-primary/10 border border-primary/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Wallet className="w-8 h-8 text-primary" />
+            </div>
+            <h2 className="text-3xl font-bold mb-3 text-white">Initialize Payroll</h2>
+            <p className="text-gray-400 mb-8 text-sm">Deploy your smart contract configuration by setting an initial total budget.</p>
+            <form onSubmit={initializePayroll} className="space-y-5">
+                <div className="text-left">
+                    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Total Budget (SOL)</label>
+                    <input 
+                        name="totalBudget"
+                        type="number"
+                        step="0.1"
+                        placeholder="e.g. 100"
+                        className="w-full bg-black border border-gray-700 rounded-lg p-3 text-white focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                        required
+                    />
+                </div>
                 <button 
                     type="submit"
                     disabled={actionLoading}
-                    className="w-full btn-primary py-3 flex items-center justify-center gap-2"
+                    className="w-full bg-white text-black hover:bg-gray-200 font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
                 >
-                    {actionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Wallet className="w-5 h-5" />}
-                    Initialize Contract
+                    {actionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Deploy Contract'}
                 </button>
             </form>
         </div>
     );
 
     return (
-        <div className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Vault Balance Card */}
+        <div className="space-y-8 w-full">
+            {/* Stats Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="glass-card"
+                    className="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-sm"
                 >
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="p-3 rounded-xl bg-primary/10">
-                            <Wallet className="w-6 h-6 text-primary" />
-                        </div>
-                        <button 
-                            onClick={fundVault}
-                            disabled={actionLoading}
-                            className="btn-primary flex items-center gap-2"
-                        >
-                            {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                            Fund Vault
-                        </button>
-                    </div>
-                    <h3 className="text-gray-400 font-medium mb-1">Total Vault Balance</h3>
-                    <div className="flex items-baseline gap-2">
-                        <span className="text-4xl font-bold">{vaultBalance?.toFixed(2)}</span>
-                        <span className="text-primary font-semibold">SOL</span>
+                    <h3 className="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-2">Vault Balance</h3>
+                    <div className="flex items-end gap-2">
+                        <span className="text-4xl font-bold text-white">{vaultBalance?.toFixed(2)}</span>
+                        <span className="text-primary font-bold mb-1">SOL</span>
                     </div>
                 </motion.div>
 
-                {/* Add Employee Form Card */}
                 <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
-                    className="glass-card"
+                    className="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-sm"
                 >
-                    <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                        <Plus className="w-5 h-5 text-secondary" /> Add Employee (Set Budget)
-                    </h3>
-                    <form onSubmit={addEmployee} className="space-y-3">
-                        <input 
-                            name="employeeWallet"
-                            placeholder="Employee Wallet Address"
-                            className="w-full bg-white/5 border border-white/20 rounded-lg p-2 text-sm focus:border-primary outline-none"
-                            required
-                        />
-                        <div className="flex gap-2">
-                            <input 
-                                name="salary"
-                                type="number"
-                                step="0.1"
-                                placeholder="Salary (SOL)"
-                                className="flex-1 bg-white/5 border border-white/10 rounded-lg p-2 text-sm focus:border-primary outline-none"
-                                required
-                            />
-                            <input 
-                                name="interval"
-                                type="number"
-                                placeholder="Interval (sec)"
-                                className="flex-1 bg-white/5 border border-white/10 rounded-lg p-2 text-sm focus:border-primary outline-none"
-                                defaultValue="30"
-                                required
-                            />
-                        </div>
-                        <button 
-                            type="submit"
-                            disabled={actionLoading}
-                            className="w-full btn-primary py-2 text-sm flex items-center justify-center gap-2"
-                        >
-                            {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                            Register Employee
-                        </button>
-                    </form>
+                    <h3 className="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-2">Total Budget</h3>
+                    <div className="flex items-end gap-2">
+                        <span className="text-4xl font-bold text-white">{budget?.toFixed(2)}</span>
+                        <span className="text-secondary font-bold mb-1">SOL</span>
+                    </div>
+                </motion.div>
+
+                <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-sm"
+                >
+                    <h3 className="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-2">Active Employees</h3>
+                    <div className="flex items-end gap-2">
+                        <span className="text-4xl font-bold text-white">{employees.length}</span>
+                        <span className="text-gray-500 font-bold mb-1">Users</span>
+                    </div>
                 </motion.div>
             </div>
 
-            {/* Employee List */}
-            <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="glass-card"
-            >
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold">Employee Directory</h2>
-                    <span className="px-3 py-1 rounded-full bg-secondary/10 border border-secondary/20 text-secondary text-xs font-semibold">
-                        {employees.length} Total
-                    </span>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Left Column: Actions */}
+                <div className="lg:col-span-1 space-y-6">
+                    {/* Fund Vault Card */}
+                    <motion.div 
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="bg-gray-900 border border-gray-800 rounded-xl p-6"
+                    >
+                        <h3 className="text-lg font-bold text-white mb-4">Fund Treasury</h3>
+                        <p className="text-gray-400 text-sm mb-6">Transfer SOL from your local wallet to the smart contract vault.</p>
+                        <button 
+                            onClick={fundVault}
+                            disabled={actionLoading}
+                            className="w-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-black font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                        >
+                            {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                            Deposit 1 SOL
+                        </button>
+                    </motion.div>
+
+                    {/* Add Employee Form Card */}
+                    <motion.div 
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="bg-gray-900 border border-gray-800 rounded-xl p-6"
+                    >
+                        <h3 className="text-lg font-bold text-white mb-4">Register Employee</h3>
+                        <form onSubmit={addEmployee} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Wallet Address</label>
+                                <input 
+                                    name="employeeWallet"
+                                    placeholder="Enter public key..."
+                                    className="w-full bg-black border border-gray-700 rounded-lg p-2.5 text-sm text-white focus:border-secondary focus:ring-1 focus:ring-secondary outline-none transition-all"
+                                    required
+                                />
+                            </div>
+                            <div className="flex gap-4">
+                                <div className="flex-1">
+                                    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Salary (SOL)</label>
+                                    <input 
+                                        name="salary"
+                                        type="number"
+                                        step="0.1"
+                                        placeholder="0.0"
+                                        className="w-full bg-black border border-gray-700 rounded-lg p-2.5 text-sm text-white focus:border-secondary focus:ring-1 focus:ring-secondary outline-none transition-all"
+                                        required
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Interval (s)</label>
+                                    <input 
+                                        name="interval"
+                                        type="number"
+                                        placeholder="30"
+                                        className="w-full bg-black border border-gray-700 rounded-lg p-2.5 text-sm text-white focus:border-secondary focus:ring-1 focus:ring-secondary outline-none transition-all"
+                                        defaultValue="30"
+                                        required
+                                    />
+                                </div>
+                            </div>
+                            <button 
+                                type="submit"
+                                disabled={actionLoading}
+                                className="w-full bg-white text-black hover:bg-gray-200 font-bold py-2.5 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors mt-2 disabled:opacity-50"
+                            >
+                                {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                Add to Payroll
+                            </button>
+                        </form>
+                    </motion.div>
                 </div>
 
-                <div className="space-y-4">
-                    <AnimatePresence>
-                        {employees.map((emp, idx) => (
-                            <motion.div 
-                                key={emp.publicKey.toBase58()}
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: idx * 0.1 }}
-                                className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5 hover:border-primary/30 transition-colors"
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center border border-white/10">
-                                        <Users className="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <p className="font-mono text-xs text-gray-400">{emp.wallet.toBase58()}</p>
-                                        <p className="font-semibold">{emp.salary.toNumber() / LAMPORTS_PER_SOL} SOL / cycle</p>
-                                    </div>
-                                </div>
-                                <div className="text-right flex flex-col items-end gap-2">
-                                    <p className="text-[10px] text-gray-500 uppercase tracking-wider">Payment Cycle Progress</p>
-                                    <div className="w-32 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                                        <motion.div 
-                                            initial={{ width: 0 }}
-                                            animate={{ width: `${Math.min(100, Math.max(0, (Math.floor(Date.now() / 1000) - emp.lastPaid.toNumber()) / emp.interval.toNumber() * 100))}%` }}
-                                            className="h-full bg-gradient-to-r from-primary to-secondary"
-                                        />
-                                    </div>
-                                    <button 
-                                        onClick={() => disbursePayment(emp.wallet.toBase58())}
-                                        disabled={actionLoading}
-                                        className="mt-2 text-xs px-3 py-1 border border-primary text-primary hover:bg-primary hover:text-black rounded transition-colors"
-                                    >
-                                        Disburse
-                                    </button>
-                                </div>
-                            </motion.div>
-                        ))}
-                    </AnimatePresence>
-                    
-                    {employees.length === 0 && (
-                        <div className="text-center py-12 text-gray-500 flex flex-col items-center gap-4">
-                            <Users className="w-12 h-12 opacity-20" />
-                            <p>No employees found. Start by adding one above.</p>
+                {/* Right Column: Employee List */}
+                <div className="lg:col-span-2">
+                    <motion.div 
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.2 }}
+                        className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden h-full flex flex-col"
+                    >
+                        <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-gray-900/50">
+                            <h2 className="text-xl font-bold text-white">Employee Roster</h2>
                         </div>
-                    )}
+
+
+                        <div className="flex-1 overflow-y-auto p-6 space-y-3">
+                            <AnimatePresence>
+                                {employees.map((emp, idx) => (
+                                    <motion.div 
+                                        key={emp.publicKey.toBase58()}
+                                        initial={{ opacity: 0, x: -10 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: idx * 0.05 }}
+                                        className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg bg-black border border-gray-800 hover:border-gray-600 transition-colors gap-4"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-full bg-gray-900 border border-gray-700 flex items-center justify-center shrink-0 text-gray-400">
+                                                <Users className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <p className="font-mono text-xs text-gray-500 mb-1">
+                                                    {emp.wallet.toBase58().slice(0, 16)}...
+                                                </p>
+                                                <p className="font-semibold text-white">
+                                                    {emp.salary.toNumber() / LAMPORTS_PER_SOL} SOL <span className="text-gray-500 font-normal text-sm">/ {emp.interval.toNumber()}s</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex flex-col items-end gap-2 w-full sm:w-auto">
+                                            <div className="flex justify-between w-full sm:w-32 items-center mb-1">
+                                                <span className="text-[10px] text-gray-500 uppercase tracking-wider">Progress</span>
+                                                <span className="text-[10px] font-mono text-white">
+                                                    {Math.floor(Math.min(100, Math.max(0, (Math.floor(Date.now() / 1000) - emp.lastPaid.toNumber()) / emp.interval.toNumber() * 100)))}%
+                                                </span>
+                                            </div>
+                                            <div className="w-full sm:w-32 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                                                <motion.div 
+                                                    initial={{ width: 0 }}
+                                                    animate={{ width: `${Math.min(100, Math.max(0, (Math.floor(Date.now() / 1000) - emp.lastPaid.toNumber()) / emp.interval.toNumber() * 100))}%` }}
+                                                    className={`h-full ${((Math.floor(Date.now() / 1000) - emp.lastPaid.toNumber()) / emp.interval.toNumber() * 100) >= 100 ? 'bg-green-500' : 'bg-primary'}`}
+                                                />
+                                            </div>
+                                            <button 
+                                                onClick={() => disbursePayment(emp.wallet.toBase58())}
+                                                disabled={actionLoading || ((Math.floor(Date.now() / 1000) - emp.lastPaid.toNumber()) / emp.interval.toNumber() * 100) < 100}
+                                                className="mt-2 w-full sm:w-auto text-xs px-4 py-1.5 font-semibold bg-white text-black hover:bg-gray-200 disabled:bg-gray-800 disabled:text-gray-500 rounded transition-colors"
+                                            >
+                                                Disburse
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </AnimatePresence>
+                            
+                            {employees.length === 0 && (
+                                <div className="text-center py-16 text-gray-500 flex flex-col items-center gap-3">
+                                    <Users className="w-10 h-10 opacity-20" />
+                                    <p className="text-sm">No employees found. Register one to begin.</p>
+                                </div>
+                            )}
+                        </div>
+                    </motion.div>
                 </div>
-            </motion.div>
+            </div>
         </div>
     );
 };
