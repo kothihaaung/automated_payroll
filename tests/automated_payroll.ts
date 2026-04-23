@@ -199,12 +199,11 @@ describe("automated_payroll", () => {
                 lamports: 2 * anchor.web3.LAMPORTS_PER_SOL,
             })
         );
-        const fundSig = await provider.connection.sendTransaction(fundTx, [employerKeypair]);
-        await provider.connection.confirmTransaction({
-            blockhash: latestBlockHash.blockhash,
-            lastValidBlockHeight: latestBlockHash.lastValidBlockHeight,
-            signature: fundSig,
-        });
+        await anchor.web3.sendAndConfirmTransaction(
+            provider.connection,
+            fundTx,
+            [employerKeypair]
+        );
 
         // 3. Disburse Payment
         const initialBalance = await provider.connection.getBalance(employeeWallet);
