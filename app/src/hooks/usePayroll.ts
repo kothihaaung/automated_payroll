@@ -1,14 +1,27 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import * as anchor from '@coral-xyz/anchor';
-import { PublicKey, Keypair } from '@solana/web3.js';
+import { Connection, PublicKey, Keypair, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import idl from '../idl/automated_payroll.json';
-import { AutomatedPayroll } from '../idl/automated_payroll';
 
-// Simple NodeWallet equivalent for the browser
-class LocalWallet {
+const PROGRAM_ID = new PublicKey(idl.address || idl.metadata?.address);
+// Use 127.0.0.1 for local validator to avoid IPv6 issues
+const NETWORK = "http://127.0.0.1:8899"; 
+
+export interface Identity {
+    label: string;
+    secretKeyBase64: string;
+    publicKeyBase58: string;
+}
+
+export class LocalWallet implements anchor.Wallet {
     constructor(readonly payer: Keypair) {}
+
+    get publicKey(): PublicKey {
+        return this.payer.publicKey;
+    }
+
     async signTransaction<T extends anchor.web3.Transaction | anchor.web3.VersionedTransaction>(tx: T): Promise<T> {
         if ('version' in tx) {
             tx.sign([this.payer]);
@@ -17,6 +30,7 @@ class LocalWallet {
         }
         return tx;
     }
+
     async signAllTransactions<T extends anchor.web3.Transaction | anchor.web3.VersionedTransaction>(txs: T[]): Promise<T[]> {
         return txs.map((t) => {
             if ('version' in t) {
@@ -27,93 +41,145 @@ class LocalWallet {
             return t;
         });
     }
-    get publicKey(): PublicKey {
-        return this.payer.publicKey;
-    }
 }
 
-export const usePayroll = () => {
-    // Instantiate connection directly for local testnet, avoiding Context providers
-    const connection = useMemo(() => new anchor.web3.Connection("http://127.0.0.1:8899", "processed"), []);
-    
-    // Instead of useAnchorWallet, we manage a local Keypair
-    const [localKeypair, setLocalKeypair] = useState<Keypair | null>(null);
-    const [program, setProgram] = useState<anchor.Program<AutomatedPayroll> | null>(null);
+export function usePayroll() {
+    const [wallet, setWallet] = useState<LocalWallet | null>(null);
+    const [program, setProgram] = useState<anchor.Program | null>(null);
+    const [connection, setConnection] = useState<Connection | null>(null);
+    const [identities, setIdentities] = useState<Identity[]>([]);
 
-    // Load from localStorage on mount
-    useEffect(() => {
-        const storedSecret = localStorage.getItem('mockWalletSecret');
-        if (storedSecret) {
-            const secretArray = new Uint8Array(JSON.parse(storedSecret));
-            setLocalKeypair(Keypair.fromSecretKey(secretArray));
+    const switchIdentity = useCallback((secretKeyBase64: string) => {
+        const secretKey = Buffer.from(secretKeyBase64, 'base64');
+        const keypair = Keypair.fromSecretKey(secretKey);
+        const newWallet = new LocalWallet(keypair);
+        setWallet(newWallet);
+        localStorage.setItem('payroll_active_identity', secretKeyBase64);
+        
+        // Re-initialize program with new wallet provider
+        if (connection) {
+            const provider = new anchor.AnchorProvider(
+                connection,
+                newWallet as anchor.Wallet,
+                { commitment: 'confirmed' }
+            );
+            anchor.setProvider(provider);
+            const newProgram = new anchor.Program(idl as any, provider);
+            setProgram(newProgram);
         }
+    }, [connection]);
+
+    const saveIdentity = useCallback((keypair: Keypair, label: string) => {
+        const secretKeyBase64 = Buffer.from(keypair.secretKey).toString('base64');
+        const newIdentity: Identity = {
+            label,
+            secretKeyBase64,
+            publicKeyBase58: keypair.publicKey.toBase58()
+        };
+        setIdentities(prev => {
+            const exists = prev.some(id => id.publicKeyBase58 === newIdentity.publicKeyBase58);
+            if (exists) return prev;
+            const updated = [...prev, newIdentity];
+            localStorage.setItem('payroll_identities', JSON.stringify(updated));
+            return updated;
+        });
     }, []);
 
-    const generateNewIdentity = async () => {
-        const newKp = Keypair.generate();
-        localStorage.setItem('mockWalletSecret', JSON.stringify(Array.from(newKp.secretKey)));
-        setLocalKeypair(newKp);
-        
-        // Auto-airdrop 10 SOL to the new identity
-        try {
-            const sig = await connection.requestAirdrop(newKp.publicKey, 10 * anchor.web3.LAMPORTS_PER_SOL);
-            await connection.confirmTransaction(sig);
-            console.log("Airdropped 10 SOL to new identity:", newKp.publicKey.toBase58());
-        } catch (e) {
-            console.error("Failed to airdrop:", e);
-        }
-        
-        return newKp;
-    };
-    
-    const clearIdentity = () => {
-        localStorage.removeItem('mockWalletSecret');
-        setLocalKeypair(null);
-    };
-
-    const wallet = useMemo(() => localKeypair ? new LocalWallet(localKeypair) : null, [localKeypair]);
-
     useEffect(() => {
-        if (wallet) {
-            const provider = new anchor.AnchorProvider(connection, wallet, {
-                preflightCommitment: 'processed',
-            });
+        const setup = async () => {
+            const conn = new Connection(NETWORK, "confirmed");
+            setConnection(conn);
+
+            // Load keychain
+            const savedIdentitiesStr = localStorage.getItem('payroll_identities');
+            let loadedIdentities: Identity[] = [];
+            
+            if (savedIdentitiesStr) {
+                try {
+                    loadedIdentities = JSON.parse(savedIdentitiesStr);
+                } catch (e) {}
+            }
+
+            // Create Employer identity if it doesn't exist
+            if (loadedIdentities.length === 0) {
+                const employerKeypair = Keypair.generate();
+                const secretKeyBase64 = Buffer.from(employerKeypair.secretKey).toString('base64');
+                loadedIdentities = [{
+                    label: "Employer",
+                    secretKeyBase64,
+                    publicKeyBase58: employerKeypair.publicKey.toBase58()
+                }];
+                localStorage.setItem('payroll_identities', JSON.stringify(loadedIdentities));
+                localStorage.setItem('payroll_active_identity', secretKeyBase64);
+            }
+            setIdentities(loadedIdentities);
+
+            // Get active identity
+            let activeSecretKeyBase64 = localStorage.getItem('payroll_active_identity');
+            if (!activeSecretKeyBase64 || !loadedIdentities.find(id => id.secretKeyBase64 === activeSecretKeyBase64)) {
+                activeSecretKeyBase64 = loadedIdentities[0].secretKeyBase64;
+                localStorage.setItem('payroll_active_identity', activeSecretKeyBase64);
+            }
+
+            const secretKey = Buffer.from(activeSecretKeyBase64, 'base64');
+            const localKeypair = Keypair.fromSecretKey(secretKey);
+            const localWallet = new LocalWallet(localKeypair);
+            setWallet(localWallet);
+
+            // Airdrop only if balance is low (to save time)
+            try {
+                const balance = await conn.getBalance(localKeypair.publicKey);
+                if (balance < LAMPORTS_PER_SOL * 5) {
+                    console.log("Airdropping 10 SOL to", localKeypair.publicKey.toBase58());
+                    const sig = await conn.requestAirdrop(localKeypair.publicKey, 10 * LAMPORTS_PER_SOL);
+                    await conn.confirmTransaction(sig);
+                }
+            } catch (err) {
+                console.error("Airdrop failed:", err);
+            }
+
+            const provider = new anchor.AnchorProvider(
+                conn,
+                localWallet as anchor.Wallet,
+                { commitment: 'confirmed' }
+            );
+            anchor.setProvider(provider);
+
             const program = new anchor.Program(idl as any, provider);
             setProgram(program);
-        }
-    }, [wallet, connection]);
+        };
 
-    const getVaultPda = (employerPubkey: PublicKey) => {
-        return anchor.web3.PublicKey.findProgramAddressSync(
-            [Buffer.from("vault"), employerPubkey.toBuffer()],
-            program?.programId || new PublicKey("FhyRNpsvvtY3HB1jtubTAJnWwkPrhWysHAcKS3SekXZs")
+        setup();
+    }, []);
+
+    const getPayrollPda = useCallback((employerPubKey: PublicKey) => {
+        return PublicKey.findProgramAddressSync(
+            [Buffer.from("payroll_config"), employerPubKey.toBuffer()],
+            PROGRAM_ID
         )[0];
-    };
+    }, []);
 
-    const getPayrollPda = (employerPubkey: PublicKey) => {
-        return anchor.web3.PublicKey.findProgramAddressSync(
-            [Buffer.from("payroll_config"), employerPubkey.toBuffer()],
-            program?.programId || new PublicKey("FhyRNpsvvtY3HB1jtubTAJnWwkPrhWysHAcKS3SekXZs")
+    const getVaultPda = useCallback((employerPubKey: PublicKey) => {
+        return PublicKey.findProgramAddressSync(
+            [Buffer.from("vault"), employerPubKey.toBuffer()],
+            PROGRAM_ID
         )[0];
-    };
+    }, []);
 
-    const getEmployeePda = (employerPubkey: PublicKey, employeeWallet: PublicKey) => {
-        return anchor.web3.PublicKey.findProgramAddressSync(
-            [
-                Buffer.from("employee"),
-                employerPubkey.toBuffer(),
-                employeeWallet.toBuffer()
-            ],
-            program?.programId || new PublicKey("FhyRNpsvvtY3HB1jtubTAJnWwkPrhWysHAcKS3SekXZs")
+    const getEmployeePda = useCallback((employerPubKey: PublicKey, employeePubKey: PublicKey) => {
+        return PublicKey.findProgramAddressSync(
+            [Buffer.from("employee"), employerPubKey.toBuffer(), employeePubKey.toBuffer()],
+            PROGRAM_ID
         )[0];
-    };
+    }, []);
 
-    return {
-        program,
-        wallet,
+    return { 
+        wallet, 
+        program, 
         connection,
-        generateNewIdentity,
-        clearIdentity,
+        identities,
+        switchIdentity,
+        saveIdentity,
         getVaultPda,
         getPayrollPda,
         getEmployeePda,

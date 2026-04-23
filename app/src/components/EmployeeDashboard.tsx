@@ -9,12 +9,17 @@ import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 export const EmployeeDashboard = () => {
     const { program, wallet, connection } = usePayroll();
     const [employeeRecords, setEmployeeRecords] = useState<any[]>([]);
+    const [walletBalance, setWalletBalance] = useState<number | null>(null);
     const [loading, setLoading] = useState(true);
 
     const refreshData = useCallback(async () => {
-        if (!program || !wallet) return;
+        if (!program || !wallet || !connection) return;
 
         try {
+            // Fetch personal wallet balance
+            const balance = await connection.getBalance(wallet.publicKey);
+            setWalletBalance(balance / LAMPORTS_PER_SOL);
+
             // Fetch all employee accounts matching the connected wallet
             const accounts = await program.account.employee.all([
                 {
@@ -37,7 +42,7 @@ export const EmployeeDashboard = () => {
         } finally {
             setLoading(false);
         }
-    }, [program, wallet]);
+    }, [program, wallet, connection]);
 
     useEffect(() => {
         refreshData();
@@ -49,20 +54,47 @@ export const EmployeeDashboard = () => {
         </div>
     );
 
-    if (employeeRecords.length === 0) {
-        return (
-            <div className="bg-gray-900 border border-gray-800 rounded-xl flex flex-col items-center justify-center py-24 text-center w-full">
-                <div className="w-20 h-20 bg-black border border-gray-800 rounded-full flex items-center justify-center mb-6">
-                    <Wallet className="w-10 h-10 text-gray-600" />
-                </div>
-                <h3 className="text-2xl font-bold mb-3 text-white">No Employment Records</h3>
-                <p className="text-gray-400 max-w-md text-sm">Your connected wallet is not registered as an employee in any active payroll on this testnet.</p>
-            </div>
-        );
-    }
-
     return (
         <div className="space-y-6 w-full">
+            {/* Top Stat Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-sm"
+                >
+                    <h3 className="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-2">My Personal Wallet Balance</h3>
+                    <div className="flex items-end gap-2">
+                        <span className="text-4xl font-bold text-white">{walletBalance !== null ? walletBalance.toFixed(2) : '--'}</span>
+                        <span className="text-secondary font-bold mb-1">SOL</span>
+                    </div>
+                </motion.div>
+                
+                <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-sm flex items-center gap-4"
+                >
+                    <div className="w-12 h-12 bg-black border border-gray-800 rounded-full flex items-center justify-center">
+                        <Wallet className="w-6 h-6 text-gray-500" />
+                    </div>
+                    <div>
+                        <h3 className="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-1">Connected Address</h3>
+                        <p className="font-mono text-sm text-white">{wallet?.publicKey.toBase58()}</p>
+                    </div>
+                </motion.div>
+            </div>
+
+            {employeeRecords.length === 0 ? (
+                <div className="bg-gray-900 border border-gray-800 rounded-xl flex flex-col items-center justify-center py-24 text-center w-full">
+                    <div className="w-20 h-20 bg-black border border-gray-800 rounded-full flex items-center justify-center mb-6">
+                        <Wallet className="w-10 h-10 text-gray-600" />
+                    </div>
+                    <h3 className="text-2xl font-bold mb-3 text-white">No Employment Records</h3>
+                    <p className="text-gray-400 max-w-md text-sm">Your connected wallet is not registered as an employee in any active payroll on this testnet.</p>
+                </div>
+            ) : (
             <div className="grid grid-cols-1 gap-6">
                 <AnimatePresence>
                     {employeeRecords.map((record, idx) => {
@@ -134,6 +166,7 @@ export const EmployeeDashboard = () => {
                     })}
                 </AnimatePresence>
             </div>
+            )}
         </div>
     );
 };

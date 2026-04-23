@@ -8,13 +8,14 @@ import { Wallet, Users, Send, Plus, Loader2 } from 'lucide-react';
 import { LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
 
 export const EmployerDashboard = () => {
-    const { program, wallet, connection, getVaultPda, getPayrollPda } = usePayroll();
+    const { program, wallet, connection, getVaultPda, getPayrollPda, saveIdentity } = usePayroll();
     const [vaultBalance, setVaultBalance] = useState<number | null>(null);
     const [employees, setEmployees] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
     const [isInitialized, setIsInitialized] = useState<boolean | null>(null);
     const [budget, setBudget] = useState<number | null>(null);
+    const [pendingRandomEmployee, setPendingRandomEmployee] = useState<anchor.web3.Keypair | null>(null);
 
     const refreshData = useCallback(async () => {
         if (!program || !wallet) return;
@@ -172,21 +173,35 @@ export const EmployerDashboard = () => {
 
         setActionLoading(true);
         try {
+            const employeeWalletPubkey = new PublicKey(employeeWallet);
+            const employeePda = anchor.web3.PublicKey.findProgramAddressSync(
+                [Buffer.from("employee"), wallet.publicKey.toBuffer(), employeeWalletPubkey.toBuffer()],
+                program.programId
+            )[0];
+
             await program.methods
                 .addEmployee(
-                    new anchor.BN(salary * LAMPORTS_PER_SOL),
+                    new anchor.BN(Math.floor(salary * LAMPORTS_PER_SOL)),
                     new anchor.BN(interval)
                 )
                 .accounts({
                     employer: wallet.publicKey,
-                    employeeWallet: new PublicKey(employeeWallet),
+                    employeeWallet: employeeWalletPubkey,
+                    employeePda: employeePda,
                 })
                 .rpc();
             
+            // Save to keychain if it was a generated random keypair
+            if (pendingRandomEmployee && pendingRandomEmployee.publicKey.toBase58() === employeeWallet) {
+                saveIdentity(pendingRandomEmployee, `Employee ${employees.length + 1}`);
+                setPendingRandomEmployee(null);
+            }
+
             form.reset();
             await refreshData();
-        } catch (err) {
+        } catch (err: any) {
             console.error("Error adding employee:", err);
+            alert("Error adding employee: " + (err.message || err.toString()));
         } finally {
             setActionLoading(false);
         }
@@ -308,18 +323,10 @@ export const EmployerDashboard = () => {
                                         <button 
                                             type="button" 
                                             onClick={() => {
+                                                const kp = anchor.web3.Keypair.generate();
+                                                setPendingRandomEmployee(kp);
                                                 const form = document.getElementById('add-employee-form') as HTMLFormElement;
-                                                if (form) form.employeeWallet.value = wallet?.publicKey.toBase58() || '';
-                                            }}
-                                            className="text-[10px] bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-black px-2 py-0.5 rounded transition-colors"
-                                        >
-                                            Use My ID
-                                        </button>
-                                        <button 
-                                            type="button" 
-                                            onClick={() => {
-                                                const form = document.getElementById('add-employee-form') as HTMLFormElement;
-                                                if (form) form.employeeWallet.value = anchor.web3.Keypair.generate().publicKey.toBase58();
+                                                if (form) form.employeeWallet.value = kp.publicKey.toBase58();
                                             }}
                                             className="text-[10px] bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 px-2 py-0.5 rounded transition-colors"
                                         >
