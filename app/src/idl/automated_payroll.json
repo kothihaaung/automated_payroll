@@ -1,0 +1,335 @@
+{
+  "address": "FhyRNpsvvtY3HB1jtubTAJnWwkPrhWysHAcKS3SekXZs",
+  "metadata": {
+    "name": "automated_payroll",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "add_employee",
+      "discriminator": [
+        14,
+        82,
+        239,
+        156,
+        50,
+        90,
+        189,
+        61
+      ],
+      "accounts": [
+        {
+          "name": "employer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "employee_wallet"
+        },
+        {
+          "name": "employee_pda",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  109,
+                  112,
+                  108,
+                  111,
+                  121,
+                  101,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "employer"
+              },
+              {
+                "kind": "account",
+                "path": "employee_wallet"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "salary",
+          "type": "u64"
+        },
+        {
+          "name": "interval",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "disburse_payment",
+      "discriminator": [
+        62,
+        42,
+        214,
+        246,
+        25,
+        33,
+        214,
+        93
+      ],
+      "accounts": [
+        {
+          "name": "employee_pda",
+          "writable": true
+        },
+        {
+          "name": "vault_pda",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "employer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "employee_wallet",
+          "writable": true
+        },
+        {
+          "name": "employer",
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_payroll",
+      "discriminator": [
+        167,
+        26,
+        70,
+        176,
+        167,
+        66,
+        216,
+        138
+      ],
+      "accounts": [
+        {
+          "name": "employer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "payroll_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  121,
+                  114,
+                  111,
+                  108,
+                  108,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "employer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault_pda",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "employer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "total_budget",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Employee",
+      "discriminator": [
+        98,
+        238,
+        61,
+        252,
+        130,
+        77,
+        105,
+        67
+      ]
+    },
+    {
+      "name": "PayrollConfig",
+      "discriminator": [
+        126,
+        142,
+        7,
+        211,
+        33,
+        33,
+        103,
+        211
+      ]
+    },
+    {
+      "name": "Vault",
+      "discriminator": [
+        211,
+        8,
+        232,
+        43,
+        2,
+        152,
+        117,
+        119
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "CustomError",
+      "msg": "Custom error message"
+    },
+    {
+      "code": 6001,
+      "name": "PaymentNotDue",
+      "msg": "The payment is not due yet."
+    }
+  ],
+  "types": [
+    {
+      "name": "Employee",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "employer",
+            "type": "pubkey"
+          },
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "salary",
+            "type": "u64"
+          },
+          {
+            "name": "last_paid",
+            "type": "i64"
+          },
+          {
+            "name": "interval",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PayrollConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "employer",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_budget",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Vault",
+      "type": {
+        "kind": "struct",
+        "fields": []
+      }
+    }
+  ],
+  "constants": [
+    {
+      "name": "SEED",
+      "type": "string",
+      "value": "\"anchor\""
+    }
+  ]
+}

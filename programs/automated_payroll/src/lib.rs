@@ -33,6 +33,7 @@ pub mod automated_payroll {
     // Add an Employee to the system
     pub fn add_employee(ctx: Context<AddEmployee>, salary: u64, interval: i64) -> Result<()> {
         let employee_account = &mut ctx.accounts.employee_pda;
+        employee_account.employer = ctx.accounts.employer.key();
         employee_account.wallet = ctx.accounts.employee_wallet.key();
         employee_account.salary = salary;
         employee_account.interval = interval;
@@ -125,7 +126,7 @@ pub struct AddEmployee<'info> {
     #[account(
         init,
         payer = employer,
-        space = 8 + 32 + 8 + 8 + 8 + 1,
+        space = 8 + 32 + 32 + 8 + 8 + 8 + 1, // Added 32 for employer pubkey
         // Seeds: "employee", employer's key, and the employee's wallet key.
         // This makes every employee record unique to this specific employer.
         seeds = [b"employee", employer.key().as_ref(), employee_wallet.key().as_ref()],
@@ -166,11 +167,12 @@ pub struct PayrollConfig {
 
 #[account]
 pub struct Employee {
-    pub wallet: Pubkey, // 32 bytes
-    pub salary: u64,    // 8 bytes
-    pub last_paid: i64, // 8 bytes (Unix timestamp)
-    pub interval: i64,  // 8 bytes (e.g., 30 days in seconds)
-    pub bump: u8,       // 1 byte
+    pub employer: Pubkey, // 32 bytes
+    pub wallet: Pubkey,   // 32 bytes
+    pub salary: u64,      // 8 bytes
+    pub last_paid: i64,   // 8 bytes (Unix timestamp)
+    pub interval: i64,    // 8 bytes (e.g., 30 days in seconds)
+    pub bump: u8,         // 1 byte
 }
 
 #[account]
