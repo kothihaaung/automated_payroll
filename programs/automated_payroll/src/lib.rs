@@ -4,6 +4,7 @@ pub mod instructions;
 pub mod state;
 
 use anchor_lang::prelude::*;
+use crate::error::*;
 
 pub use constants::*;
 pub use instructions::*;
@@ -41,6 +42,45 @@ pub mod automated_payroll {
         msg!("Employee added: {:?}", employee_account.wallet);
         Ok(())
     }
+
+    // Disburse payment to employee
+    pub fn disburse_payment(ctx: Context<DisbursePayment>) -> Result<()> {
+        let employee = &mut ctx.accounts.employee_pda;
+        let clock = Clock::get()?;
+
+        // 1. Logic Check: Is it time to pay?
+        let next_pay_date = employee.last_paid + employee.interval;
+        require!(
+            clock.unix_timestamp >= next_pay_date,
+            PayrollError::PaymentNotDue
+        );
+
+        // 2. Calculate payment
+        let amount = employee.salary;
+
+        // 3. Transfer SOL from Vault PDA to Employee Wallet
+        // We "invoke" a transfer from our program-owned PDA
+        **ctx
+            .accounts
+            .vault_pda
+            .to_account_info()
+            .try_borrow_mut_lamports()? -= amount;
+        **ctx
+            .accounts
+            .employee_wallet
+            .to_account_info()
+            .try_borrow_mut_lamports()? += amount;
+
+        // 4. Update State
+        employee.last_paid = clock.unix_timestamp;
+
+        msg!(
+            "Payment of {} lamports sent to {:?}",
+            amount,
+            employee.wallet
+        );
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -61,6 +101,15 @@ pub struct InitializePayroll<'info> {
         bump
     )]
     pub payroll_config: Account<'info, PayrollConfig>,
+
+    #[account(
+        init,
+        payer = employer,
+        space = 8,
+        seeds = [b"vault", employer.key().as_ref()],
+        bump
+    )]
+    pub vault_pda: Account<'info, Vault>,
 
     pub system_program: Program<'info, System>,
 }
@@ -87,6 +136,27 @@ pub struct AddEmployee<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+pub struct DisbursePayment<'info> {
+    #[account(mut)]
+    pub employee_pda: Account<'info, Employee>,
+
+    /// CHECK: This is the vault that holds the company funds
+    #[account(
+        mut,
+        seeds = [b"vault", employer.key().as_ref()],
+        bump
+    )]
+    pub vault_pda: Account<'info, Vault>,
+
+    /// CHECK: Recipient wallet
+    #[account(mut, address = employee_pda.wallet)]
+    pub employee_wallet: UncheckedAccount<'info>,
+
+    pub employer: Signer<'info>, // Only the employer can trigger the disbursement
+    pub system_program: Program<'info, System>,
+}
+
 #[account]
 pub struct PayrollConfig {
     pub employer: Pubkey,  // 32 bytes
@@ -102,3 +172,8 @@ pub struct Employee {
     pub interval: i64,  // 8 bytes (e.g., 30 days in seconds)
     pub bump: u8,       // 1 byte
 }
+
+#[account]
+pub struct Vault {}
+
+// Add this custom error at the bottom of lib.rs
