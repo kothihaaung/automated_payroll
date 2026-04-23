@@ -28,6 +28,19 @@ pub mod automated_payroll {
         );
         Ok(())
     }
+
+    // Add an Employee to the system
+    pub fn add_employee(ctx: Context<AddEmployee>, salary: u64, interval: i64) -> Result<()> {
+        let employee_account = &mut ctx.accounts.employee_pda;
+        employee_account.wallet = ctx.accounts.employee_wallet.key();
+        employee_account.salary = salary;
+        employee_account.interval = interval;
+        employee_account.last_paid = Clock::get()?.unix_timestamp;
+        employee_account.bump = ctx.bumps.employee_pda;
+
+        msg!("Employee added: {:?}", employee_account.wallet);
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -48,6 +61,28 @@ pub struct InitializePayroll<'info> {
         bump
     )]
     pub payroll_config: Account<'info, PayrollConfig>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct AddEmployee<'info> {
+    #[account(mut)]
+    pub employer: Signer<'info>,
+
+    /// CHECK: This is just the target wallet of the employee
+    pub employee_wallet: UncheckedAccount<'info>,
+
+    #[account(
+        init,
+        payer = employer,
+        space = 8 + 32 + 8 + 8 + 8 + 1,
+        // Seeds: "employee", employer's key, and the employee's wallet key.
+        // This makes every employee record unique to this specific employer.
+        seeds = [b"employee", employer.key().as_ref(), employee_wallet.key().as_ref()],
+        bump
+    )]
+    pub employee_pda: Account<'info, Employee>,
 
     pub system_program: Program<'info, System>,
 }

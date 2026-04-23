@@ -93,4 +93,36 @@ describe("automated_payroll", () => {
             console.log("✅ Correctly rejected invalid PDA seeds!");
         }
     });
+
+    it("Adds an employee successfully!", async () => {
+        const employer = provider.wallet.publicKey;
+        // Create a random keypair for a "New Employee"
+        const employeeWallet = anchor.web3.Keypair.generate().publicKey;
+
+        const [employeePda] = anchor.web3.PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("employee"),
+                employer.toBuffer(),
+                employeeWallet.toBuffer()
+            ],
+            program.programId
+        );
+
+        const salary = new anchor.BN(500); // 500 units per interval
+        const interval = new anchor.BN(60 * 60 * 24 * 30); // 30 days in seconds
+
+        await program.methods
+            .addEmployee(salary, interval)
+            .accounts({
+                employer: employer,
+                employeeWallet: employeeWallet,
+                // employeePda: employeePda, // Inferred
+            })
+            .rpc();
+
+        const account = await program.account.employee.fetch(employeePda);
+        expect(account.wallet.toBase58()).to.equal(employeeWallet.toBase58());
+        expect(account.salary.toString()).to.equal("500");
+        console.log("✅ Employee Account created at:", employeePda.toBase58());
+    });
 });
