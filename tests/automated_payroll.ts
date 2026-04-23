@@ -213,7 +213,6 @@ describe("automated_payroll", () => {
             .disbursePayment()
             .accounts({
                 employeePda: employeePda,
-                vaultPda: vaultPda,
                 employeeWallet: employeeWallet,
                 employer: employer,
             })
