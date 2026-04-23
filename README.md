@@ -2,6 +2,25 @@
 
 A decentralized payroll management system built on the Solana blockchain using the Anchor framework. This application allows employers to initialize a payroll budget and securely manage employee payments through Program Derived Addresses (PDAs).
 
+## 💡 Why Blockchain Payroll?
+
+Traditional payroll systems are often slow, expensive, and opaque. This DApp leverages the Solana blockchain to solve these pain points.
+
+| Feature | Traditional Payroll | Automated Payroll (Solana) |
+| :--- | :--- | :--- |
+| **Speed** | 1-5 business days (ACH/Wire) | Near-instant (~400ms block time) |
+| **Cost** | High banking & intermediary fees | Minimal transaction fees ($0.00025 avg) |
+| **Availability** | Bank hours & holidays only | 24/7/365 |
+| **Transparency** | Private bank ledgers | Publicly verifiable on-chain records |
+| **Global Access** | Difficult/Expensive international transfers | Borderless by default |
+
+### ✨ Key Advantages
+
+1.  **Trustless Execution**: Payments are governed by smart contracts (Rust/Anchor), removing the need for trust in a central payroll administrator.
+2.  **Deterministic Budgeting**: Using Program Derived Addresses (PDAs), the system ensures that payroll funds are cryptographically linked to the specific employer and cannot be tampered with.
+3.  **Auditability**: Every payment, initialization, and budget update is recorded on the Solana ledger, creating a perfect, immutable audit trail for accounting and tax purposes.
+4.  **Elimination of Intermediaries**: By removing banks and payment processors, more value stays with the employer and the employees.
+
 ## 🚀 Tech Stack
 
 - **Blockchain**: [Solana](https://solana.com/)
