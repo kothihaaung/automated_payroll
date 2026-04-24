@@ -57,4 +57,28 @@ jobs:
         run: npm install
 
       - name: Run Anchor Tests
-        run: anchor test
+        run: |
+          # Create keypair if it doesn't exist
+          mkdir -p /home/runner/.config/solana
+          solana-keygen new --no-bip39-passphrase --outfile /home/runner/.config/solana/id.json || true
+          
+          # Start validator in background
+          solana-test-validator --ledger .anchor/ledger --log > /dev/null 2>&1 &
+          
+          # Wait for validator to be ready
+          echo "Waiting for validator..."
+          for i in {1..30}; do
+            if solana cluster-version &> /dev/null; then
+              echo "Validator is up!"
+              break
+            fi
+            sleep 2
+          done
+          
+          # Build, Deploy and Test
+          anchor build
+          anchor deploy
+          bun test ./tests/automated_payroll.ts
+        env:
+          ANCHOR_PROVIDER_URL: http://127.0.0.1:8899
+          ANCHOR_WALLET: /home/runner/.config/solana/id.json
