@@ -16,7 +16,7 @@ describe("automated_payroll", () => {
         // Airdrop SOL to the new employer
         const signature = await provider.connection.requestAirdrop(
             employer.publicKey,
-            anchor.web3.LAMPORTS_PER_SOL
+            2 * anchor.web3.LAMPORTS_PER_SOL
         );
         const latestBlockHash = await provider.connection.getLatestBlockhash();
         await provider.connection.confirmTransaction({
@@ -57,7 +57,7 @@ describe("automated_payroll", () => {
         // Airdrop to employerB (the one who will try to sign)
         const sig = await provider.connection.requestAirdrop(
             employerB.publicKey,
-            anchor.web3.LAMPORTS_PER_SOL
+            2 * anchor.web3.LAMPORTS_PER_SOL
         );
         const latestBlockHash = await provider.connection.getLatestBlockhash();
         await provider.connection.confirmTransaction({
@@ -96,7 +96,7 @@ describe("automated_payroll", () => {
             expect.fail("The transaction should have failed but it succeeded!");
         } catch (error) {
             // Check logs or message for ConstraintSeeds
-            const logs = error.logs ? error.logs.join("") : error.message;
+            const logs = (error as any).logs ? (error as any).logs.join("") : (error as any).message;
             expect(logs).to.include("ConstraintSeeds");
             console.log("✅ Correctly rejected invalid PDA seeds!");
         }
@@ -124,7 +124,6 @@ describe("automated_payroll", () => {
             .accounts({
                 employer: employer,
                 employeeWallet: employeeWallet,
-                // employeePda: employeePda, // Inferred
             })
             .rpc();
 
@@ -153,7 +152,6 @@ describe("automated_payroll", () => {
         const employeeKeypair = anchor.web3.Keypair.generate();
         const employeeWallet = employeeKeypair.publicKey;
 
-        // 1. Add Employee with 0 interval for immediate testing
         const salary = new anchor.BN(anchor.web3.LAMPORTS_PER_SOL); // 1 SOL
         const interval = new anchor.BN(0);
 
@@ -166,7 +164,7 @@ describe("automated_payroll", () => {
             program.programId
         );
 
-        // 1. Initialize Payroll (This now creates the Vault PDA correctly)
+        // 1. Initialize Payroll
         const budget = new anchor.BN(5000);
         await program.methods
             .initializePayroll(budget)
@@ -222,5 +220,83 @@ describe("automated_payroll", () => {
         const finalBalance = await provider.connection.getBalance(employeeWallet);
         expect(finalBalance).to.be.gt(initialBalance);
         console.log("✅ Payment disbursed! Employee received:", (finalBalance - initialBalance) / anchor.web3.LAMPORTS_PER_SOL, "SOL");
+    });
+
+    it("Fails if payment is attempted before interval!", async () => {
+        const employerKeypair = anchor.web3.Keypair.generate();
+        const employer = employerKeypair.publicKey;
+        const sig = await provider.connection.requestAirdrop(employer, 2 * anchor.web3.LAMPORTS_PER_SOL);
+        const latestBlockHash = await provider.connection.getLatestBlockhash();
+        await provider.connection.confirmTransaction({
+            blockhash: latestBlockHash.blockhash,
+            lastValidBlockHeight: latestBlockHash.lastValidBlockHeight,
+            signature: sig,
+        });
+        const employeeWallet = anchor.web3.Keypair.generate().publicKey;
+
+        const [employeePda] = anchor.web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("employee"), employer.toBuffer(), employeeWallet.toBuffer()],
+            program.programId
+        );
+
+        await program.methods.initializePayroll(new anchor.BN(5000)).accounts({ employer: employer }).signers([employerKeypair]).rpc();
+        await program.methods.addEmployee(new anchor.BN(1000), new anchor.BN(60 * 60 * 24)).accounts({ employer, employeeWallet }).signers([employerKeypair]).rpc();
+        
+        try {
+            await program.methods.disbursePayment().accounts({ 
+                employeePda: employeePda,
+                employeeWallet: employeeWallet, 
+                employer: employer 
+            }).signers([employerKeypair]).rpc();
+            expect.fail("Rejected premature payment!");
+        } catch (error) {
+            const logs = (error as any).logs ? (error as any).logs.join("") : (error as any).message;
+            expect(logs).to.include("PaymentNotDue");
+            console.log("✅ Correctly rejected premature payment!");
+        }
+    });
+
+    it("Fails if unauthorized employer tries to disburse!", async () => {
+        const employerKeypair = anchor.web3.Keypair.generate();
+        const attackerKeypair = anchor.web3.Keypair.generate();
+
+        // Employer airdrop
+        const sig1 = await provider.connection.requestAirdrop(employerKeypair.publicKey, 2 * anchor.web3.LAMPORTS_PER_SOL);
+        const lb1 = await provider.connection.getLatestBlockhash();
+        await provider.connection.confirmTransaction({ signature: sig1, ...lb1 });
+
+        // Attacker airdrop
+        const sig2 = await provider.connection.requestAirdrop(attackerKeypair.publicKey, 2 * anchor.web3.LAMPORTS_PER_SOL);
+        const lb2 = await provider.connection.getLatestBlockhash();
+        await provider.connection.confirmTransaction({ signature: sig2, ...lb2 });
+
+        const employeeWallet = anchor.web3.Keypair.generate().publicKey;
+
+        // 1. Legit Employer setup
+        await program.methods.initializePayroll(new anchor.BN(5000)).accounts({ employer: employerKeypair.publicKey }).signers([employerKeypair]).rpc();
+        await program.methods.addEmployee(new anchor.BN(100), new anchor.BN(0)).accounts({ employer: employerKeypair.publicKey, employeeWallet }).signers([employerKeypair]).rpc();
+
+        const [employeePda] = anchor.web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("employee"), employerKeypair.publicKey.toBuffer(), employeeWallet.toBuffer()],
+            program.programId
+        );
+
+        // 2. Attacker setup (must have a vault to pass the vault check)
+        await program.methods.initializePayroll(new anchor.BN(1000)).accounts({ employer: attackerKeypair.publicKey }).signers([attackerKeypair]).rpc();
+        
+        try {
+            // Attacker tries to disburse the Legit Employer's employeePda
+            await program.methods.disbursePayment().accounts({ 
+                employeePda: employeePda, // This belongs to employerKeypair
+                employeeWallet: employeeWallet, 
+                employer: attackerKeypair.publicKey 
+            }).signers([attackerKeypair]).rpc();
+
+            expect.fail("Attacker should not be able to disburse!");
+        } catch (error) {
+            const logs = (error as any).logs ? (error as any).logs.join("") : (error as any).message;
+            expect(logs).to.include("ConstraintSeeds");
+            console.log("✅ Blocked unauthorized disbursement!");
+        }
     });
 });

@@ -5,12 +5,16 @@
  * For showcasing and learning purposes only. Commercial use requires compensation.
  */
 
+pub mod constants;
+pub mod error;
+pub mod instructions;
+pub mod state;
+
 use anchor_lang::prelude::*;
 use crate::error::*;
 
 pub use constants::*;
 pub use instructions::*;
-// pub use state::*;
 
 declare_id!("FhyRNpsvvtY3HB1jtubTAJnWwkPrhWysHAcKS3SekXZs");
 
@@ -141,7 +145,11 @@ pub struct AddEmployee<'info> {
 
 #[derive(Accounts)]
 pub struct DisbursePayment<'info> {
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [b"employee", employer.key().as_ref(), employee_wallet.key().as_ref()],
+        bump = employee_pda.bump
+    )]
     pub employee_pda: Account<'info, Employee>,
 
     /// CHECK: This is the vault that holds the company funds
