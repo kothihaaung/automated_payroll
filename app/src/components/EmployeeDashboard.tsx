@@ -5,12 +5,17 @@ import { usePayroll } from '@/hooks/usePayroll';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Wallet, Clock, Loader2, DollarSign } from 'lucide-react';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { AlertModal } from './AlertModal';
 
 export const EmployeeDashboard = () => {
     const { program, wallet, connection } = usePayroll();
     const [employeeRecords, setEmployeeRecords] = useState<any[]>([]);
     const [walletBalance, setWalletBalance] = useState<number | null>(null);
     const [loading, setLoading] = useState(true);
+    const [loggedHours, setLoggedHours] = useState<number>(0);
+    const [isLogging, setIsLogging] = useState(false);
+    
+    const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: '', message: '' });
 
     const refreshData = useCallback(async () => {
         if (!program || !wallet || !connection) return;
@@ -37,6 +42,10 @@ export const EmployeeDashboard = () => {
                 publicKey: acc.publicKey,
                 ...acc.account
             })));
+
+            const savedHours = localStorage.getItem(`payroll_hours_${wallet.publicKey.toBase58()}`);
+            if (savedHours) setLoggedHours(parseInt(savedHours));
+
         } catch (err) {
             console.error("Error fetching employee data:", err);
         } finally {
@@ -46,7 +55,17 @@ export const EmployeeDashboard = () => {
 
     useEffect(() => {
         refreshData();
-    }, [refreshData]);
+    }, [refreshData, wallet?.publicKey]);
+
+    const logHours = () => {
+        setIsLogging(true);
+        setTimeout(() => {
+            const newHours = loggedHours + 1;
+            setLoggedHours(newHours);
+            localStorage.setItem(`payroll_hours_${wallet?.publicKey.toBase58()}`, newHours.toString());
+            setIsLogging(false);
+        }, 800);
+    };
 
     if (loading) return (
         <div className="flex justify-center items-center h-64 w-full">
@@ -171,14 +190,17 @@ export const EmployeeDashboard = () => {
                                     className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden"
                                 >
                                     <div className="p-6 border-b border-gray-800 flex justify-between items-center">
-                                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                            <Clock className="w-5 h-5 text-primary" /> Work History & Activity
+                                        <h3 className="text-lg font-bold text-white flex items-center gap-4">
+                                            <Clock className="w-5 h-5 text-primary" /> Work Hours & Logs
+                                            <span className="px-3 py-1 bg-primary/10 text-primary text-xs rounded-full border border-primary/20">{loggedHours} Hours Total</span>
                                         </h3>
                                         <button 
-                                            onClick={() => alert("Daily progress logged on local device! In a production app, this would update your on-chain work metadata.")}
-                                            className="px-4 py-2 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 rounded-lg text-sm font-bold transition-all"
+                                            onClick={logHours}
+                                            disabled={isLogging}
+                                            className="px-4 py-2 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 rounded-lg text-sm font-bold transition-all flex items-center gap-2"
                                         >
-                                            Log Daily Progress
+                                            {isLogging ? <Loader2 className="w-4 h-4 animate-spin" /> : <Clock className="w-4 h-4" />}
+                                            Log Hour
                                         </button>
                                     </div>
                                     <div className="p-0">
@@ -195,21 +217,23 @@ export const EmployeeDashboard = () => {
                                                     <td className="px-6 py-4 text-sm text-gray-300 font-medium">Auto-Payroll Cycle Progress Update</td>
                                                     <td className="px-6 py-4 text-sm text-gray-400 font-mono">Just Now</td>
                                                     <td className="px-6 py-4">
-                                                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">In Progress</span>
+                                                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">Active</span>
                                                     </td>
                                                 </tr>
+                                                {loggedHours > 0 && (
+                                                    <tr className="hover:bg-white/5 transition-colors">
+                                                        <td className="px-6 py-4 text-sm text-gray-300 font-medium">Manual Work Hour Logged</td>
+                                                        <td className="px-6 py-4 text-sm text-gray-400 font-mono">Session Verified</td>
+                                                        <td className="px-6 py-4">
+                                                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-primary/10 text-primary border border-primary/20">Logged</span>
+                                                        </td>
+                                                    </tr>
+                                                )}
                                                 <tr className="hover:bg-white/5 transition-colors">
                                                     <td className="px-6 py-4 text-sm text-gray-300 font-medium">Last On-Chain Payment Confirmed</td>
                                                     <td className="px-6 py-4 text-sm text-gray-400 font-mono">{new Date(lastPaid * 1000).toLocaleString()}</td>
                                                     <td className="px-6 py-4">
                                                         <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-green-500/10 text-green-400 border border-green-500/20">Settled</span>
-                                                    </td>
-                                                </tr>
-                                                <tr className="hover:bg-white/5 transition-colors">
-                                                    <td className="px-6 py-4 text-sm text-gray-300 font-medium">Employment Verified by Smart Contract</td>
-                                                    <td className="px-6 py-4 text-sm text-gray-400 font-mono">{new Date((lastPaid - 86400) * 1000).toLocaleDateString()}</td>
-                                                    <td className="px-6 py-4">
-                                                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-gray-500/10 text-gray-400 border border-gray-500/20">Verified</span>
                                                     </td>
                                                 </tr>
                                             </tbody>
@@ -222,6 +246,7 @@ export const EmployeeDashboard = () => {
                 </AnimatePresence>
             </div>
             )}
+            <AlertModal isOpen={alertConfig.isOpen} onClose={() => setAlertConfig(prev => ({ ...prev, isOpen: false }))} title={alertConfig.title} message={alertConfig.message} />
         </div>
     );
 };

@@ -4,11 +4,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { usePayroll } from '@/hooks/usePayroll';
 import * as anchor from '@coral-xyz/anchor';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wallet, Users, Send, Plus, Loader2 } from 'lucide-react';
+import { Wallet, Users, Send, Plus, Loader2, RotateCcw } from 'lucide-react';
 import { LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
+import { AlertModal } from './AlertModal';
 
 export const EmployerDashboard = () => {
-    const { program, wallet, connection, getVaultPda, getPayrollPda, getEmployeePda, saveIdentity } = usePayroll();
+    const { program, wallet, connection, getVaultPda, getPayrollPda, getEmployeePda, saveIdentity, resetSession } = usePayroll();
     const [vaultBalance, setVaultBalance] = useState<number | null>(null);
     const [employees, setEmployees] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -16,6 +17,8 @@ export const EmployerDashboard = () => {
     const [isInitialized, setIsInitialized] = useState<boolean | null>(null);
     const [budget, setBudget] = useState<number | null>(null);
     const [pendingRandomEmployee, setPendingRandomEmployee] = useState<anchor.web3.Keypair | null>(null);
+
+    const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: '', message: '' });
 
     const refreshData = useCallback(async () => {
         if (!program || !wallet) return;
@@ -47,16 +50,6 @@ export const EmployerDashboard = () => {
                 }
             ]);
             
-            // Wait, the seed for employee is [b"employee", employer, employee_wallet]
-            // But we don't have the employer key in the account data itself except in seeds?
-            // Actually, let's check lib.rs for the Employee struct.
-            // Employee struct has wallet, salary, last_paid, interval, bump.
-            // It DOES NOT have the employer pubkey in the data!
-            // This is a design flaw in the Rust code if we want to filter by employer easily on-chain.
-            // But we can use the PDA derivation if we know the employee wallets.
-            // Or we can use getProgramAccounts with a filter if we added the employer to the struct.
-            
-            // For now, let's just show a mock list or the ones we can find.
             setEmployees(employeeAccounts.map(acc => ({
                 publicKey: acc.publicKey,
                 ...acc.account
@@ -66,11 +59,11 @@ export const EmployerDashboard = () => {
         } finally {
             setLoading(false);
         }
-    }, [program, wallet, connection, getVaultPda]);
+    }, [program, wallet, connection, getVaultPda, getPayrollPda]);
 
     useEffect(() => {
         refreshData();
-    }, [refreshData]);
+    }, [refreshData, wallet?.publicKey]);
 
     const fundVault = async () => {
         if (!wallet || !program) return;
@@ -92,8 +85,8 @@ export const EmployerDashboard = () => {
             const sig = await wallet.signTransaction(tx);
             await connection.sendRawTransaction(sig.serialize());
             await refreshData();
-        } catch (err) {
-            console.error("Error funding vault:", err);
+        } catch (err: any) {
+            setAlertConfig({ isOpen: true, title: "Deposit Failed", message: err.message || err.toString() });
         } finally {
             setActionLoading(false);
         }
@@ -121,8 +114,8 @@ export const EmployerDashboard = () => {
                 .rpc();
             
             await refreshData();
-        } catch (err) {
-            console.error("Error initializing payroll:", err);
+        } catch (err: any) {
+            setAlertConfig({ isOpen: true, title: "Initialization Failed", message: err.message || err.toString() });
         } finally {
             setActionLoading(false);
         }
@@ -148,9 +141,17 @@ export const EmployerDashboard = () => {
                 .rpc();
             
             await refreshData();
-        } catch (err) {
-            console.error("Error disbursing payment:", err);
-            alert("Payment failed or not due yet.");
+        } catch (err: any) {
+            const msg = err.message || err.toString();
+            if (msg.includes("PaymentNotDue")) {
+                setAlertConfig({
+                    isOpen: true,
+                    title: "Payment Not Due",
+                    message: "The smart contract rejected this payment because the time interval has not passed yet. Please wait for the progress bar to reach 100%."
+                });
+            } else {
+                setAlertConfig({ isOpen: true, title: "Payment Failed", message: msg });
+            }
         } finally {
             setActionLoading(false);
         }
@@ -168,10 +169,7 @@ export const EmployerDashboard = () => {
         setActionLoading(true);
         try {
             const employeeWalletPubkey = new PublicKey(employeeWallet);
-            const employeePda = anchor.web3.PublicKey.findProgramAddressSync(
-                [Buffer.from("employee"), wallet.publicKey.toBuffer(), employeeWalletPubkey.toBuffer()],
-                program.programId
-            )[0];
+            const employeePda = getEmployeePda(wallet.publicKey, employeeWalletPubkey);
 
             await program.methods
                 .addEmployee(
@@ -194,8 +192,7 @@ export const EmployerDashboard = () => {
             form.reset();
             await refreshData();
         } catch (err: any) {
-            console.error("Error adding employee:", err);
-            alert("Error adding employee: " + (err.message || err.toString()));
+            setAlertConfig({ isOpen: true, title: "Registration Failed", message: err.message || err.toString() });
         } finally {
             setActionLoading(false);
         }
@@ -234,6 +231,7 @@ export const EmployerDashboard = () => {
                     {actionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Deploy Contract'}
                 </button>
             </form>
+            <AlertModal isOpen={alertConfig.isOpen} onClose={() => setAlertConfig(prev => ({ ...prev, isOpen: false }))} title={alertConfig.title} message={alertConfig.message} />
         </div>
     );
 
@@ -244,13 +242,22 @@ export const EmployerDashboard = () => {
                 <motion.div 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-sm"
+                    className="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-sm flex justify-between items-start"
                 >
-                    <h3 className="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-2">Vault Balance</h3>
-                    <div className="flex items-end gap-2">
-                        <span className="text-4xl font-bold text-white">{vaultBalance?.toFixed(2)}</span>
-                        <span className="text-primary font-bold mb-1">SOL</span>
+                    <div>
+                        <h3 className="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-2">Vault Balance</h3>
+                        <div className="flex items-end gap-2">
+                            <span className="text-4xl font-bold text-white">{vaultBalance?.toFixed(2)}</span>
+                            <span className="text-primary font-bold mb-1">SOL</span>
+                        </div>
                     </div>
+                    <button 
+                        onClick={resetSession}
+                        className="p-2 hover:bg-gray-800 rounded-lg text-gray-500 hover:text-red-500 transition-colors"
+                        title="Reset Session"
+                    >
+                        <RotateCcw className="w-4 h-4" />
+                    </button>
                 </motion.div>
 
                 <motion.div 
@@ -387,52 +394,60 @@ export const EmployerDashboard = () => {
 
                         <div className="flex-1 overflow-y-auto p-6 space-y-3">
                             <AnimatePresence>
-                                {employees.map((emp, idx) => (
-                                    <motion.div 
-                                        key={emp.publicKey.toBase58()}
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: idx * 0.05 }}
-                                        className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg bg-black border border-gray-800 hover:border-gray-600 transition-colors gap-4"
-                                    >
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 rounded-full bg-gray-900 border border-gray-700 flex items-center justify-center shrink-0 text-gray-400">
-                                                <Users className="w-5 h-5" />
+                                {employees.map((emp, idx) => {
+                                    const lastPaid = emp.lastPaid.toNumber();
+                                    const interval = emp.interval.toNumber();
+                                    const now = Math.floor(Date.now() / 1000);
+                                    const progress = Math.min(100, Math.max(0, (now - lastPaid) / interval * 100));
+                                    const isDue = progress >= 100;
+
+                                    return (
+                                        <motion.div 
+                                            key={emp.publicKey.toBase58()}
+                                            initial={{ opacity: 0, x: -10 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: idx * 0.05 }}
+                                            className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg bg-black border border-gray-800 hover:border-gray-600 transition-colors gap-4"
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 rounded-full bg-gray-900 border border-gray-700 flex items-center justify-center shrink-0 text-gray-400">
+                                                    <Users className="w-5 h-5" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-mono text-xs text-gray-500 mb-1">
+                                                        {emp.wallet.toBase58().slice(0, 16)}...
+                                                    </p>
+                                                    <p className="font-semibold text-white">
+                                                        {emp.salary.toNumber() / LAMPORTS_PER_SOL} SOL <span className="text-gray-500 font-normal text-sm">/ {interval}s</span>
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <p className="font-mono text-xs text-gray-500 mb-1">
-                                                    {emp.wallet.toBase58().slice(0, 16)}...
-                                                </p>
-                                                <p className="font-semibold text-white">
-                                                    {emp.salary.toNumber() / LAMPORTS_PER_SOL} SOL <span className="text-gray-500 font-normal text-sm">/ {emp.interval.toNumber()}s</span>
-                                                </p>
+                                            
+                                            <div className="flex flex-col items-end gap-2 w-full sm:w-auto">
+                                                <div className="flex justify-between w-full sm:w-32 items-center mb-1">
+                                                    <span className="text-[10px] text-gray-500 uppercase tracking-wider">Progress</span>
+                                                    <span className="text-[10px] font-mono text-white">
+                                                        {Math.floor(progress)}%
+                                                    </span>
+                                                </div>
+                                                <div className="w-full sm:w-32 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                                                    <motion.div 
+                                                        initial={{ width: 0 }}
+                                                        animate={{ width: `${progress}%` }}
+                                                        className={`h-full ${isDue ? 'bg-green-500' : 'bg-primary'}`}
+                                                    />
+                                                </div>
+                                                <button 
+                                                    onClick={() => disbursePayment(emp.wallet.toBase58())}
+                                                    disabled={actionLoading || !isDue}
+                                                    className="mt-2 w-full sm:w-auto text-xs px-4 py-1.5 font-semibold bg-white text-black hover:bg-gray-200 disabled:bg-gray-800 disabled:text-gray-500 rounded transition-colors"
+                                                >
+                                                    Disburse
+                                                </button>
                                             </div>
-                                        </div>
-                                        
-                                        <div className="flex flex-col items-end gap-2 w-full sm:w-auto">
-                                            <div className="flex justify-between w-full sm:w-32 items-center mb-1">
-                                                <span className="text-[10px] text-gray-500 uppercase tracking-wider">Progress</span>
-                                                <span className="text-[10px] font-mono text-white">
-                                                    {Math.floor(Math.min(100, Math.max(0, (Math.floor(Date.now() / 1000) - emp.lastPaid.toNumber()) / emp.interval.toNumber() * 100)))}%
-                                                </span>
-                                            </div>
-                                            <div className="w-full sm:w-32 h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                                                <motion.div 
-                                                    initial={{ width: 0 }}
-                                                    animate={{ width: `${Math.min(100, Math.max(0, (Math.floor(Date.now() / 1000) - emp.lastPaid.toNumber()) / emp.interval.toNumber() * 100))}%` }}
-                                                    className={`h-full ${((Math.floor(Date.now() / 1000) - emp.lastPaid.toNumber()) / emp.interval.toNumber() * 100) >= 100 ? 'bg-green-500' : 'bg-primary'}`}
-                                                />
-                                            </div>
-                                            <button 
-                                                onClick={() => disbursePayment(emp.wallet.toBase58())}
-                                                disabled={actionLoading || ((Math.floor(Date.now() / 1000) - emp.lastPaid.toNumber()) / emp.interval.toNumber() * 100) < 100}
-                                                className="mt-2 w-full sm:w-auto text-xs px-4 py-1.5 font-semibold bg-white text-black hover:bg-gray-200 disabled:bg-gray-800 disabled:text-gray-500 rounded transition-colors"
-                                            >
-                                                Disburse
-                                            </button>
-                                        </div>
-                                    </motion.div>
-                                ))}
+                                        </motion.div>
+                                    );
+                                })}
                             </AnimatePresence>
                             
                             {employees.length === 0 && (
@@ -445,6 +460,7 @@ export const EmployerDashboard = () => {
                     </motion.div>
                 </div>
             </div>
+            <AlertModal isOpen={alertConfig.isOpen} onClose={() => setAlertConfig(prev => ({ ...prev, isOpen: false }))} title={alertConfig.title} message={alertConfig.message} />
         </div>
     );
 };

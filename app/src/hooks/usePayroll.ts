@@ -1,46 +1,34 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import * as anchor from '@coral-xyz/anchor';
 import { Connection, PublicKey, Keypair, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import * as anchor from '@coral-xyz/anchor';
 import idl from '../idl/automated_payroll.json';
 
-const PROGRAM_ID = new PublicKey(idl.address || idl.metadata?.address);
-// Use 127.0.0.1 for local validator to avoid IPv6 issues
-const NETWORK = "http://127.0.0.1:8899"; 
+const PROGRAM_ID = new PublicKey("FhyRNpsvvtY3HB1jtubTAJnWwkPrhWysHAcKS3SekXZs");
+const NETWORK = "http://127.0.0.1:8899";
 
-export interface Identity {
-    label: string;
-    secretKeyBase64: string;
-    publicKeyBase58: string;
-}
-
-export class LocalWallet implements anchor.Wallet {
-    constructor(readonly payer: Keypair) {}
-
-    get publicKey(): PublicKey {
-        return this.payer.publicKey;
-    }
-
-    async signTransaction<T extends anchor.web3.Transaction | anchor.web3.VersionedTransaction>(tx: T): Promise<T> {
-        if ('version' in tx) {
-            tx.sign([this.payer]);
-        } else {
-            tx.partialSign(this.payer);
-        }
+export class LocalWallet {
+    constructor(public payer: Keypair) {}
+    async signTransaction(tx: anchor.web3.Transaction): Promise<anchor.web3.Transaction> {
+        tx.partialSign(this.payer);
         return tx;
     }
-
-    async signAllTransactions<T extends anchor.web3.Transaction | anchor.web3.VersionedTransaction>(txs: T[]): Promise<T[]> {
+    async signAllTransactions(txs: anchor.web3.Transaction[]): Promise<anchor.web3.Transaction[]> {
         return txs.map((t) => {
-            if ('version' in t) {
-                t.sign([this.payer]);
-            } else {
-                t.partialSign(this.payer);
-            }
+            t.partialSign(this.payer);
             return t;
         });
     }
+    get publicKey(): PublicKey {
+        return this.payer.publicKey;
+    }
+}
+
+export interface Identity {
+    publicKeyBase58: string;
+    secretKeyBase64: string;
+    label: string;
 }
 
 export function usePayroll() {
@@ -50,34 +38,47 @@ export function usePayroll() {
     const [identities, setIdentities] = useState<Identity[]>([]);
 
     const switchIdentity = useCallback((secretKeyBase64: string) => {
-        const secretKey = Buffer.from(secretKeyBase64, 'base64');
-        const keypair = Keypair.fromSecretKey(secretKey);
-        const newWallet = new LocalWallet(keypair);
-        setWallet(newWallet);
-        localStorage.setItem('payroll_active_identity', secretKeyBase64);
-        
-        // Re-initialize program with new wallet provider
-        if (connection) {
-            const provider = new anchor.AnchorProvider(
-                connection,
-                newWallet as anchor.Wallet,
-                { commitment: 'confirmed' }
-            );
-            anchor.setProvider(provider);
-            const newProgram = new anchor.Program(idl as any, provider);
-            setProgram(newProgram);
+        try {
+            if (!secretKeyBase64) return;
+            const secretKey = Buffer.from(secretKeyBase64, 'base64');
+            
+            if (secretKey.length !== 64) {
+                console.error("Invalid secret key size:", secretKey.length);
+                localStorage.removeItem('payroll_active_identity');
+                return;
+            }
+
+            const keypair = Keypair.fromSecretKey(secretKey);
+            const newWallet = new LocalWallet(keypair);
+            setWallet(newWallet);
+            localStorage.setItem('payroll_active_identity', secretKeyBase64);
+
+            if (connection) {
+                const provider = new anchor.AnchorProvider(
+                    connection,
+                    newWallet as any,
+                    { commitment: 'confirmed' }
+                );
+                anchor.setProvider(provider);
+                const newProgram = new anchor.Program(idl as any, provider);
+                setProgram(newProgram);
+            }
+        } catch (err) {
+            console.error("Failed to switch identity:", err);
+            localStorage.removeItem('payroll_active_identity');
         }
     }, [connection]);
 
     const saveIdentity = useCallback((keypair: Keypair, label: string) => {
-        const secretKeyBase64 = Buffer.from(keypair.secretKey).toString('base64');
+        const secretBase64 = Buffer.from(keypair.secretKey).toString('base64');
         const newIdentity: Identity = {
-            label,
-            secretKeyBase64,
-            publicKeyBase58: keypair.publicKey.toBase58()
+            publicKeyBase58: keypair.publicKey.toBase58(),
+            secretKeyBase64: secretBase64,
+            label
         };
+
         setIdentities(prev => {
-            const exists = prev.some(id => id.publicKeyBase58 === newIdentity.publicKeyBase58);
+            const exists = prev.find(id => id.publicKeyBase58 === newIdentity.publicKeyBase58);
             if (exists) return prev;
             const updated = [...prev, newIdentity];
             localStorage.setItem('payroll_identities', JSON.stringify(updated));
@@ -86,92 +87,83 @@ export function usePayroll() {
     }, []);
 
     useEffect(() => {
-        const setup = async () => {
-            const conn = new Connection(NETWORK, "confirmed");
-            setConnection(conn);
+        const conn = new Connection(NETWORK, "confirmed");
+        setConnection(conn);
 
-            // Load keychain
-            const savedIdentitiesStr = localStorage.getItem('payroll_identities');
-            let loadedIdentities: Identity[] = [];
-            
-            if (savedIdentitiesStr) {
-                try {
-                    loadedIdentities = JSON.parse(savedIdentitiesStr);
-                } catch (e) {}
-            }
-
-            // Create Employer identity if it doesn't exist
-            if (loadedIdentities.length === 0) {
-                const employerKeypair = Keypair.generate();
-                const secretKeyBase64 = Buffer.from(employerKeypair.secretKey).toString('base64');
-                loadedIdentities = [{
-                    label: "Employer",
-                    secretKeyBase64,
-                    publicKeyBase58: employerKeypair.publicKey.toBase58()
-                }];
-                localStorage.setItem('payroll_identities', JSON.stringify(loadedIdentities));
-                localStorage.setItem('payroll_active_identity', secretKeyBase64);
-            }
-            setIdentities(loadedIdentities);
-
-            // Get active identity
-            let activeSecretKeyBase64 = localStorage.getItem('payroll_active_identity');
-            if (!activeSecretKeyBase64 || !loadedIdentities.find(id => id.secretKeyBase64 === activeSecretKeyBase64)) {
-                activeSecretKeyBase64 = loadedIdentities[0].secretKeyBase64;
-                localStorage.setItem('payroll_active_identity', activeSecretKeyBase64);
-            }
-
-            const secretKey = Buffer.from(activeSecretKeyBase64, 'base64');
-            const localKeypair = Keypair.fromSecretKey(secretKey);
-            const localWallet = new LocalWallet(localKeypair);
-            setWallet(localWallet);
-
-            // Airdrop only if balance is low (to save time)
+        const savedIdentitiesStr = localStorage.getItem('payroll_identities');
+        let currentIdentities: Identity[] = [];
+        
+        if (savedIdentitiesStr) {
             try {
-                const balance = await conn.getBalance(localKeypair.publicKey);
-                if (balance < LAMPORTS_PER_SOL * 5) {
-                    console.log("Airdropping 10 SOL to", localKeypair.publicKey.toBase58());
-                    const sig = await conn.requestAirdrop(localKeypair.publicKey, 10 * LAMPORTS_PER_SOL);
-                    await conn.confirmTransaction(sig);
-                }
-            } catch (err) {
-                console.error("Airdrop failed:", err);
+                currentIdentities = JSON.parse(savedIdentitiesStr);
+                setIdentities(currentIdentities);
+            } catch (e) {
+                console.error("Failed to parse identities", e);
             }
+        }
 
-            const provider = new anchor.AnchorProvider(
-                conn,
-                localWallet as anchor.Wallet,
-                { commitment: 'confirmed' }
-            );
+        const activeId = localStorage.getItem('payroll_active_identity');
+        
+        if (activeId) {
+            const secretKey = Buffer.from(activeId, 'base64');
+            if (secretKey.length === 64) {
+                const keypair = Keypair.fromSecretKey(secretKey);
+                const newWallet = new LocalWallet(keypair);
+                setWallet(newWallet);
+                
+                const provider = new anchor.AnchorProvider(conn, newWallet as any, { commitment: 'confirmed' });
+                anchor.setProvider(provider);
+                setProgram(new anchor.Program(idl as any, provider));
+            } else {
+                localStorage.removeItem('payroll_active_identity');
+            }
+        } else if (currentIdentities.length > 0) {
+            switchIdentity(currentIdentities[0].secretKeyBase64);
+        } else {
+            const employerKp = Keypair.generate();
+            const secretBase64 = Buffer.from(employerKp.secretKey).toString('base64');
+            const newIdentity: Identity = {
+                publicKeyBase58: employerKp.publicKey.toBase58(),
+                secretKeyBase64: secretBase64,
+                label: 'Employer'
+            };
+            setIdentities([newIdentity]);
+            localStorage.setItem('payroll_identities', JSON.stringify([newIdentity]));
+            localStorage.setItem('payroll_active_identity', secretBase64);
+
+            const newWallet = new LocalWallet(employerKp);
+            setWallet(newWallet);
+            const provider = new anchor.AnchorProvider(conn, newWallet as any, { commitment: 'confirmed' });
             anchor.setProvider(provider);
-
-            const program = new anchor.Program(idl as any, provider);
-            setProgram(program);
-        };
-
-        setup();
+            setProgram(new anchor.Program(idl as any, provider));
+        }
     }, []);
 
-    const getPayrollPda = useCallback((employerPubKey: PublicKey) => {
+    const resetSession = useCallback(() => {
+        localStorage.clear();
+        window.location.reload();
+    }, []);
+
+    const getVaultPda = (employer: PublicKey) => {
         return PublicKey.findProgramAddressSync(
-            [Buffer.from("payroll_config"), employerPubKey.toBuffer()],
+            [Buffer.from("vault"), employer.toBuffer()],
             PROGRAM_ID
         )[0];
-    }, []);
+    };
 
-    const getVaultPda = useCallback((employerPubKey: PublicKey) => {
+    const getPayrollPda = (employer: PublicKey) => {
         return PublicKey.findProgramAddressSync(
-            [Buffer.from("vault"), employerPubKey.toBuffer()],
+            [Buffer.from("payroll_config"), employer.toBuffer()],
             PROGRAM_ID
         )[0];
-    }, []);
+    };
 
-    const getEmployeePda = useCallback((employerPubKey: PublicKey, employeePubKey: PublicKey) => {
+    const getEmployeePda = (employer: PublicKey, employee: PublicKey) => {
         return PublicKey.findProgramAddressSync(
-            [Buffer.from("employee"), employerPubKey.toBuffer(), employeePubKey.toBuffer()],
+            [Buffer.from("employee"), employer.toBuffer(), employee.toBuffer()],
             PROGRAM_ID
         )[0];
-    }, []);
+    };
 
     return { 
         wallet, 
@@ -181,8 +173,9 @@ export function usePayroll() {
         activeIdentity: identities.find(id => id.publicKeyBase58 === wallet?.publicKey.toBase58()),
         switchIdentity,
         saveIdentity,
+        resetSession,
         getVaultPda,
         getPayrollPda,
         getEmployeePda,
     };
-};
+}
