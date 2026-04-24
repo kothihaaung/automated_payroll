@@ -8,7 +8,7 @@ import { Wallet, Users, Send, Plus, Loader2 } from 'lucide-react';
 import { LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
 
 export const EmployerDashboard = () => {
-    const { program, wallet, connection, getVaultPda, getPayrollPda, saveIdentity } = usePayroll();
+    const { program, wallet, connection, getVaultPda, getPayrollPda, getEmployeePda, saveIdentity } = usePayroll();
     const [vaultBalance, setVaultBalance] = useState<number | null>(null);
     const [employees, setEmployees] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -135,13 +135,7 @@ export const EmployerDashboard = () => {
         try {
             const employeeWalletPubkey = new PublicKey(employeeWalletStr);
             const vaultPda = getVaultPda(wallet.publicKey);
-            const { getEmployeePda } = usePayroll(); // Wait, getEmployeePda is already from hook? No, let's use the program directly or import it.
-            // Actually, we can get getEmployeePda from the hook destructuring at the top of the component. 
-            // I'll assume we have it or calculate it here.
-            const employeePda = anchor.web3.PublicKey.findProgramAddressSync(
-                [Buffer.from("employee"), wallet.publicKey.toBuffer(), employeeWalletPubkey.toBuffer()],
-                program.programId
-            )[0];
+            const employeePda = getEmployeePda(wallet.publicKey, employeeWalletPubkey);
 
             await program.methods
                 .disbursePayment()

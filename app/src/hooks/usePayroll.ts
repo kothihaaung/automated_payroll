@@ -178,6 +178,7 @@ export function usePayroll() {
         program, 
         connection,
         identities,
+        activeIdentity: identities.find(id => id.publicKeyBase58 === wallet?.publicKey.toBase58()),
         switchIdentity,
         saveIdentity,
         getVaultPda,

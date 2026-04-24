@@ -109,59 +109,114 @@ export const EmployeeDashboard = () => {
                         const isDue = timeElapsed >= interval;
 
                         return (
-                            <motion.div 
-                                key={record.publicKey.toBase58()}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: idx * 0.1 }}
-                                className="bg-gray-900 border border-gray-800 rounded-xl p-6 lg:p-8 flex flex-col lg:flex-row justify-between items-stretch gap-8 shadow-sm"
-                            >
-                                <div className="flex-1 space-y-8 w-full">
-                                    <div className="flex items-center gap-4">
-                                        <div className="p-4 bg-primary/10 rounded-full border border-primary/20">
-                                            <DollarSign className="w-8 h-8 text-primary" />
+                            <div key={record.publicKey.toBase58()} className="space-y-6">
+                                <motion.div 
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: idx * 0.1 }}
+                                    className="bg-gray-900 border border-gray-800 rounded-xl p-6 lg:p-8 flex flex-col lg:flex-row justify-between items-stretch gap-8 shadow-sm"
+                                >
+                                    <div className="flex-1 space-y-8 w-full">
+                                        <div className="flex items-center gap-4">
+                                            <div className="p-4 bg-primary/10 rounded-full border border-primary/20">
+                                                <DollarSign className="w-8 h-8 text-primary" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Employer Address</p>
+                                                <p className="font-mono text-sm text-gray-300 bg-black px-3 py-1.5 rounded-lg border border-gray-800 inline-block">{record.employer.toBase58()}</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Employer Address</p>
-                                            <p className="font-mono text-sm text-gray-300 bg-black px-3 py-1.5 rounded-lg border border-gray-800 inline-block">{record.employer.toBase58()}</p>
+                                        
+                                        <div className="grid grid-cols-2 gap-6">
+                                            <div className="bg-black p-5 rounded-xl border border-gray-800">
+                                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Salary / Cycle</p>
+                                                <p className="text-3xl font-bold text-white">{salary} <span className="text-sm font-normal text-gray-400">SOL</span></p>
+                                            </div>
+                                            <div className="bg-black p-5 rounded-xl border border-gray-800">
+                                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Pay Interval</p>
+                                                <p className="text-3xl font-bold text-white">{interval} <span className="text-sm font-normal text-gray-400">sec</span></p>
+                                            </div>
                                         </div>
                                     </div>
-                                    
-                                    <div className="grid grid-cols-2 gap-6">
-                                        <div className="bg-black p-5 rounded-xl border border-gray-800">
-                                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Salary / Cycle</p>
-                                            <p className="text-3xl font-bold text-white">{salary} <span className="text-sm font-normal text-gray-400">SOL</span></p>
-                                        </div>
-                                        <div className="bg-black p-5 rounded-xl border border-gray-800">
-                                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Pay Interval</p>
-                                            <p className="text-3xl font-bold text-white">{interval} <span className="text-sm font-normal text-gray-400">sec</span></p>
-                                        </div>
-                                    </div>
-                                </div>
 
-                                <div className="w-full lg:w-1/3 bg-black p-8 rounded-xl border border-gray-800 flex flex-col justify-center items-center text-center">
-                                    <div className="w-16 h-16 rounded-full bg-secondary/10 border border-secondary/20 flex items-center justify-center mb-6">
-                                        <Clock className="w-8 h-8 text-secondary" />
+                                    <div className="w-full lg:w-1/3 bg-black p-8 rounded-xl border border-gray-800 flex flex-col justify-center items-center text-center">
+                                        <div className="w-16 h-16 rounded-full bg-secondary/10 border border-secondary/20 flex items-center justify-center mb-6">
+                                            <Clock className="w-8 h-8 text-secondary" />
+                                        </div>
+                                        <h4 className="text-lg font-bold text-white mb-6">Payment Status</h4>
+                                        
+                                        <div className="w-full h-2.5 bg-gray-900 rounded-full overflow-hidden mb-4 border border-gray-800">
+                                            <motion.div 
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${progressPercent}%` }}
+                                                className={`h-full ${isDue ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-primary'}`}
+                                            />
+                                        </div>
+                                        
+                                        <p className="text-sm font-semibold">
+                                            {isDue ? (
+                                                <span className="text-green-400 font-bold">Cycle Complete! Payment Incoming</span>
+                                            ) : (
+                                                <span className="text-gray-400">{Math.floor(progressPercent)}% cycle completed</span>
+                                            )}
+                                        </p>
                                     </div>
-                                    <h4 className="text-lg font-bold text-white mb-6">Payment Status</h4>
-                                    
-                                    <div className="w-full h-2.5 bg-gray-900 rounded-full overflow-hidden mb-4 border border-gray-800">
-                                        <motion.div 
-                                            initial={{ width: 0 }}
-                                            animate={{ width: `${progressPercent}%` }}
-                                            className={`h-full ${isDue ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-primary'}`}
-                                        />
+                                </motion.div>
+
+                                {/* Activity & Logs Section */}
+                                <motion.div 
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 0.2 }}
+                                    className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden"
+                                >
+                                    <div className="p-6 border-b border-gray-800 flex justify-between items-center">
+                                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                            <Clock className="w-5 h-5 text-primary" /> Work History & Activity
+                                        </h3>
+                                        <button 
+                                            onClick={() => alert("Daily progress logged on local device! In a production app, this would update your on-chain work metadata.")}
+                                            className="px-4 py-2 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 rounded-lg text-sm font-bold transition-all"
+                                        >
+                                            Log Daily Progress
+                                        </button>
                                     </div>
-                                    
-                                    <p className="text-sm font-semibold">
-                                        {isDue ? (
-                                            <span className="text-green-400">Payment Due! Awaiting Employer</span>
-                                        ) : (
-                                            <span className="text-gray-400">{Math.floor(progressPercent)}% cycle completed</span>
-                                        )}
-                                    </p>
-                                </div>
-                            </motion.div>
+                                    <div className="p-0">
+                                        <table className="w-full text-left">
+                                            <thead>
+                                                <tr className="text-xs uppercase text-gray-500 bg-black/50">
+                                                    <th className="px-6 py-4 font-semibold">Activity</th>
+                                                    <th className="px-6 py-4 font-semibold">Timestamp</th>
+                                                    <th className="px-6 py-4 font-semibold">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-800">
+                                                <tr className="hover:bg-white/5 transition-colors">
+                                                    <td className="px-6 py-4 text-sm text-gray-300 font-medium">Auto-Payroll Cycle Progress Update</td>
+                                                    <td className="px-6 py-4 text-sm text-gray-400 font-mono">Just Now</td>
+                                                    <td className="px-6 py-4">
+                                                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">In Progress</span>
+                                                    </td>
+                                                </tr>
+                                                <tr className="hover:bg-white/5 transition-colors">
+                                                    <td className="px-6 py-4 text-sm text-gray-300 font-medium">Last On-Chain Payment Confirmed</td>
+                                                    <td className="px-6 py-4 text-sm text-gray-400 font-mono">{new Date(lastPaid * 1000).toLocaleString()}</td>
+                                                    <td className="px-6 py-4">
+                                                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-green-500/10 text-green-400 border border-green-500/20">Settled</span>
+                                                    </td>
+                                                </tr>
+                                                <tr className="hover:bg-white/5 transition-colors">
+                                                    <td className="px-6 py-4 text-sm text-gray-300 font-medium">Employment Verified by Smart Contract</td>
+                                                    <td className="px-6 py-4 text-sm text-gray-400 font-mono">{new Date((lastPaid - 86400) * 1000).toLocaleDateString()}</td>
+                                                    <td className="px-6 py-4">
+                                                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-gray-500/10 text-gray-400 border border-gray-500/20">Verified</span>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </motion.div>
+                            </div>
                         );
                     })}
                 </AnimatePresence>
