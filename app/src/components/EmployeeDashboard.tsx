@@ -220,23 +220,24 @@ export const EmployeeDashboard = () => {
                                 >
                                     <div className="p-6 border-b border-gray-800 flex justify-between items-center">
                                         <h3 className="text-lg font-bold text-white flex items-center gap-4">
-                                            <Clock className="w-5 h-5 text-primary" /> Work Hours & Logs
-                                            <span className="px-3 py-1 bg-primary/10 text-primary text-xs rounded-full border border-primary/20">{loggedHours} Hours Total</span>
+                                            <Clock className="w-5 h-5 text-primary" /> Payment Activity & History
                                         </h3>
-                                        <button 
+                                        {/* Manual Log Hour hidden as requested */}
+                                        {/* <button 
                                             onClick={logHours}
                                             disabled={isLogging}
                                             className="px-4 py-2 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 rounded-lg text-sm font-bold transition-all flex items-center gap-2"
                                         >
                                             {isLogging ? <Loader2 className="w-4 h-4 animate-spin" /> : <Clock className="w-4 h-4" />}
                                             Log Hour
-                                        </button>
+                                        </button> */}
                                     </div>
                                     <div className="p-0">
                                         <table className="w-full text-left">
                                             <thead>
                                                 <tr className="text-xs uppercase text-gray-500 bg-black/50">
                                                     <th className="px-6 py-4 font-semibold">Activity</th>
+                                                    <th className="px-6 py-4 font-semibold">Amount</th>
                                                     <th className="px-6 py-4 font-semibold">Timestamp</th>
                                                     <th className="px-6 py-4 font-semibold">Status</th>
                                                 </tr>
@@ -244,22 +245,26 @@ export const EmployeeDashboard = () => {
                                             <tbody className="divide-y divide-gray-800">
                                                 <tr className="hover:bg-white/5 transition-colors">
                                                     <td className="px-6 py-4 text-sm text-gray-300 font-medium">Auto-Payroll Cycle Progress Update</td>
+                                                    <td className="px-6 py-4 text-sm text-gray-400 font-mono">--</td>
                                                     <td className="px-6 py-4 text-sm text-gray-400 font-mono">Just Now</td>
                                                     <td className="px-6 py-4">
                                                         <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">Active</span>
                                                     </td>
                                                 </tr>
-                                                {loggedHours > 0 && (
+                                                {/* Manual Work Log row hidden as requested */}
+                                                {/* {loggedHours > 0 && (
                                                     <tr className="hover:bg-white/5 transition-colors">
                                                         <td className="px-6 py-4 text-sm text-gray-300 font-medium">Manual Work Hour Logged</td>
+                                                        <td className="px-6 py-4 text-sm text-gray-400 font-mono">--</td>
                                                         <td className="px-6 py-4 text-sm text-gray-400 font-mono">Session Verified</td>
                                                         <td className="px-6 py-4">
                                                             <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-primary/10 text-primary border border-primary/20">Logged</span>
                                                         </td>
                                                     </tr>
-                                                )}
+                                                )} */}
                                                 <tr className="hover:bg-white/5 transition-colors">
-                                                    <td className="px-6 py-4 text-sm text-gray-300 font-medium">Last On-Chain Payment Confirmed</td>
+                                                    <td className="px-6 py-4 text-sm text-gray-300 font-medium">Last On-Chain Payment Settled</td>
+                                                    <td className="px-6 py-4 text-sm text-primary font-bold">{salary} SOL</td>
                                                     <td className="px-6 py-4 text-sm text-gray-400 font-mono">{new Date(lastPaid * 1000).toLocaleString()}</td>
                                                     <td className="px-6 py-4">
                                                         <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-green-500/10 text-green-400 border border-green-500/20">Settled</span>
