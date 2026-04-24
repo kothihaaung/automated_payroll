@@ -547,6 +547,24 @@ export const EmployerDashboard = () => {
                 </div>
             </div>
             <AlertModal isOpen={alertConfig.isOpen} onClose={() => setAlertConfig(prev => ({ ...prev, isOpen: false }))} title={alertConfig.title} message={alertConfig.message} />
+
+            {/* Danger Zone */}
+            <div className="mt-12 pt-8 border-t border-red-900/30">
+                <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div>
+                        <h4 className="text-red-400 font-bold mb-1 flex items-center gap-2">
+                            <RotateCcw className="w-4 h-4" /> Danger Zone
+                        </h4>
+                        <p className="text-red-400/60 text-xs">Resetting the session will clear your local identities and require a fresh payroll initialization.</p>
+                    </div>
+                    <button 
+                        onClick={resetSession}
+                        className="px-6 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/30 rounded-lg text-sm font-bold transition-all active:scale-95 whitespace-nowrap"
+                    >
+                        Complete Reset
+                    </button>
+                </div>
+            </div>
         </div>
     );
 };
