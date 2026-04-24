@@ -193,7 +193,7 @@ export const EmployerDashboard = () => {
             const vaultPda = getVaultPda(wallet.publicKey);
             const employeePda = getEmployeePda(wallet.publicKey, employeeWalletPubkey);
 
-            await program.methods
+            await (program.methods as any)
                 .disbursePayment()
                 .accounts({
                     employer: wallet.publicKey,
@@ -203,6 +203,17 @@ export const EmployerDashboard = () => {
                 })
                 .rpc();
             
+            // Record history in localStorage
+            const history = JSON.parse(localStorage.getItem('payroll_payment_history') || '[]');
+            const currentEmployee = employees.find(e => e.wallet.toBase58() === employeeWalletStr);
+            history.unshift({
+                employee: employeeWalletStr,
+                amount: (currentEmployee?.salary.toNumber() || 0) / LAMPORTS_PER_SOL,
+                timestamp: Math.floor(Date.now() / 1000),
+                type: 'Settlement'
+            });
+            localStorage.setItem('payroll_payment_history', JSON.stringify(history.slice(0, 50)));
+
             await refreshData();
         } catch (err: any) {
             const msg = err.message || err.toString();

@@ -1,91 +1,54 @@
-# 🏦 Automated Payroll DApp
+# 💸 Automated Blockchain Payroll DApp
 
-A decentralized payroll management system built on the Solana blockchain using the Anchor framework. This application allows employers to initialize a payroll budget and securely manage employee payments through Program Derived Addresses (PDAs).
+A premium, real-time automated payroll system built on Solana. This repository is designed to showcase high-performance blockchain integration, real-time UI state management, and secure smart contract interactions.
 
-## 💡 Why Blockchain Payroll?
+---
 
-Traditional payroll systems are often slow, expensive, and opaque. This DApp leverages the Solana blockchain to solve these pain points.
+## ⚠️ Licensing & Usage (Showcase Only)
 
-| Feature | Traditional Payroll | Automated Payroll (Solana) |
-| :--- | :--- | :--- |
-| **Speed** | 1-5 business days (ACH/Wire) | Near-instant (~400ms block time) |
-| **Cost** | High banking & intermediary fees | Minimal transaction fees ($0.00025 avg) |
-| **Availability** | Bank hours & holidays only | 24/7/365 |
-| **Transparency** | Private bank ledgers | Publicly verifiable on-chain records |
-| **Global Access** | Difficult/Expensive international transfers | Borderless by default |
+**This project is NOT Open Source.** It is released under a **Source Available License** for showcase and learning purposes only.
 
-### ✨ Key Advantages
+*   **Learning & Personal Use:** You are free to clone, study, and experiment with the code locally.
+*   **Commercial & Derivative Use:** You may **NOT** use this code for commercial purposes, build a product on top of it, or redistribute it as a paid service without explicit permission and **compensation**.
 
-1.  **Trustless Execution**: Payments are governed by smart contracts (Rust/Anchor), removing the need for trust in a central payroll administrator.
-2.  **Deterministic Budgeting**: Using Program Derived Addresses (PDAs), the system ensures that payroll funds are cryptographically linked to the specific employer and cannot be tampered with.
-3.  **Auditability**: Every payment, initialization, and budget update is recorded on the Solana ledger, creating a perfect, immutable audit trail for accounting and tax purposes.
-4.  **Elimination of Intermediaries**: By removing banks and payment processors, more value stays with the employer and the employees.
+### 💼 Get a Commercial License
+If you want to use this codebase for your project, business, or as a foundation for a production app, please contact the author to discuss licensing terms and compensation:
 
-## 🚀 Tech Stack
+**LinkedIn:** [linkedin.com/in/kothihaaung/](https://www.linkedin.com/in/kothihaaung/)
 
-- **Blockchain**: [Solana](https://solana.com/)
-- **Framework**: [Anchor (v0.30+)](https://www.anchor-lang.com/)
-- **Smart Contract Language**: [Rust](https://www.rust-lang.org/)
-- **Testing & Scripting**: [TypeScript](https://www.typescriptlang.org/)
-- **Runtime & Package Manager**: [Bun](https://bun.sh/)
-- **Local Validator**: `solana-test-validator`
+---
 
-## 📋 Prerequisites
+## 🚀 Features
 
-Ensure you have the following installed:
-- [Rust](https://rustup.rs/)
-- [Solana CLI](https://docs.solana.com/cli/install-solana-cli-tools)
-- [Anchor CLI](https://www.anchor-lang.com/docs/installation)
-- [Bun](https://bun.sh/docs/installation)
+- **On-Chain Payroll:** Automated disbursement via Solana smart contracts.
+- **Premium Dashboard:** High-fidelity financial UI with live real-time progress tracking.
+- **Identity Management:** Role-switching between Employer and Employee identities.
+- **Time-Synced Countdown:** Advanced frontend synchronization with blockchain cluster time.
+- **Persistent Audit Logs:** Local tracking of all successful on-chain settlements.
 
-## ⚙️ Configuration
+## 🛠️ Tech Stack
 
-1. **Clone the repository**:
+- **Blockchain:** Solana, Anchor Framework (Rust)
+- **Frontend:** Next.js 16 (Turbopack), Tailwind CSS v4, Framer Motion
+- **Wallet:** Local Wallet Simulation (for seamless demoing)
+
+## 📦 Getting Started
+
+1. **Install Dependencies:**
    ```bash
-   git clone <your-repo-url>
-   cd automated_payroll
+   npm install
    ```
 
-2. **Install dependencies**:
+2. **Run Solana Validator:**
    ```bash
-   bun install
+   solana-test-validator
    ```
 
-3. **Check your Solana Config**:
-   Ensure you are set to `localhost`:
+3. **Start Development Server:**
    ```bash
-   solana config set --url localhost
+   npm run dev
    ```
 
-4. **Update Program ID** (Optional):
-   If you change the program ID, update it in:
-   - `Anchor.toml`
-   - `programs/automated_payroll/src/lib.rs`
+---
 
-## 🛠️ How to Run
-
-### 1. Start the Local Validator
-Open a separate terminal and run:
-```bash
-solana-test-validator
-```
-
-### 2. Build the Program
-```bash
-anchor build
-```
-
-### 3. Run Tests
-The project uses `bun test` for high-performance testing. To run the automated test suite against your local validator:
-```bash
-anchor test --skip-local-validator
-```
-
-## 🧪 Testing Coverage
-
-The current test suite includes:
-- **Initialization**: Verifies that an employer can successfully initialize a payroll config with a budget.
-- **Security Constraints**: Ensures that the program rejects unauthorized PDA initialization attempts (Negative Testing).
-
-## 📄 License
-ISC
+*Built with ❤️ for the Solana Ecosystem.*

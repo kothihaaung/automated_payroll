@@ -18,6 +18,7 @@ export const EmployeeDashboard = () => {
     const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: '', message: '' });
     const [currentTime, setCurrentTime] = useState(Math.floor(Date.now() / 1000));
     const [timeOffset, setTimeOffset] = useState(0);
+    const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
 
     // Sync with Cluster Time
     useEffect(() => {
@@ -75,6 +76,11 @@ export const EmployeeDashboard = () => {
 
             const savedHours = localStorage.getItem(`payroll_hours_${wallet.publicKey.toBase58()}`);
             if (savedHours) setLoggedHours(parseInt(savedHours));
+
+            // Load persistent payment history
+            const history = JSON.parse(localStorage.getItem('payroll_payment_history') || '[]');
+            const myHistory = history.filter((h: any) => h.employee === wallet.publicKey.toBase58());
+            setPaymentHistory(myHistory);
 
         } catch (err) {
             console.error("Error fetching employee data:", err);
@@ -243,6 +249,7 @@ export const EmployeeDashboard = () => {
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-800">
+                                                {/* Live Status */}
                                                 <tr className="hover:bg-white/5 transition-colors">
                                                     <td className="px-6 py-4 text-sm text-gray-300 font-medium">Payroll Cycle Active (Live Tracking)</td>
                                                     <td className="px-6 py-4 text-sm text-gray-400 font-mono">--</td>
@@ -251,34 +258,36 @@ export const EmployeeDashboard = () => {
                                                         <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">Streaming</span>
                                                     </td>
                                                 </tr>
+
+                                                {/* Historical Settlements */}
+                                                {paymentHistory.map((item, i) => (
+                                                    <tr key={i} className="hover:bg-white/5 transition-colors">
+                                                        <td className="px-6 py-4 text-sm text-gray-300 font-medium">On-Chain Payment Settled</td>
+                                                        <td className="px-6 py-4 text-sm text-primary font-bold">{item.amount} SOL</td>
+                                                        <td className="px-6 py-4 text-sm text-gray-400 font-mono">{new Date(item.timestamp * 1000).toLocaleString()}</td>
+                                                        <td className="px-6 py-4">
+                                                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-green-500/10 text-green-400 border border-green-500/20">Settled</span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+
+                                                {/* Initial State */}
                                                 <tr className="hover:bg-white/5 transition-colors">
-                                                    <td className="px-6 py-4 text-sm text-gray-300 font-medium">
-                                                        {timeElapsed < interval ? "Enrollment Verified & Cycle Started" : "Last On-Chain Payment Settled"}
-                                                    </td>
-                                                    <td className="px-6 py-4 text-sm text-primary font-bold">
-                                                        {timeElapsed < interval ? "--" : `${salary} SOL`}
-                                                    </td>
+                                                    <td className="px-6 py-4 text-sm text-gray-300 font-medium">Enrollment Verified & Cycle Started</td>
+                                                    <td className="px-6 py-4 text-sm text-gray-400 font-mono">--</td>
                                                     <td className="px-6 py-4 text-sm text-gray-400 font-mono">{new Date(lastPaid * 1000).toLocaleString()}</td>
                                                     <td className="px-6 py-4">
-                                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${timeElapsed < interval ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" : "bg-green-500/10 text-green-400 border border-green-500/20"}`}>
-                                                            {timeElapsed < interval ? "Initialized" : "Settled"}
-                                                        </span>
+                                                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">Initialized</span>
                                                     </td>
                                                 </tr>
+
+                                                {/* Background Activity */}
                                                 <tr className="hover:bg-white/5 transition-colors opacity-60">
                                                     <td className="px-6 py-4 text-sm text-gray-400 font-medium">Employer Vault Funding Verified</td>
                                                     <td className="px-6 py-4 text-sm text-gray-500 font-mono">Verified</td>
                                                     <td className="px-6 py-4 text-sm text-gray-500 font-mono">Previous Block</td>
                                                     <td className="px-6 py-4">
                                                         <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-gray-500/10 text-gray-400 border border-gray-500/20">Confirmed</span>
-                                                    </td>
-                                                </tr>
-                                                <tr className="hover:bg-white/5 transition-colors opacity-40">
-                                                    <td className="px-6 py-4 text-sm text-gray-400 font-medium">Smart Contract Identity Linked</td>
-                                                    <td className="px-6 py-4 text-sm text-gray-500 font-mono">PDA Link</td>
-                                                    <td className="px-6 py-4 text-sm text-gray-500 font-mono">Session Init</td>
-                                                    <td className="px-6 py-4">
-                                                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-gray-500/10 text-gray-400 border border-gray-500/20">Verified</span>
                                                     </td>
                                                 </tr>
                                             </tbody>
