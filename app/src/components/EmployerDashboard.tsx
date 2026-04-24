@@ -21,14 +21,36 @@ export const EmployerDashboard = () => {
 
     const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: '', message: '' });
     const [currentTime, setCurrentTime] = useState(Math.floor(Date.now() / 1000));
+    const [timeOffset, setTimeOffset] = useState(0);
+
+    // Sync with Cluster Time
+    useEffect(() => {
+        const syncTime = async () => {
+            if (!connection) return;
+            try {
+                const slot = await connection.getSlot();
+                const clusterTime = await connection.getBlockTime(slot);
+                if (clusterTime) {
+                    const localTime = Math.floor(Date.now() / 1000);
+                    setTimeOffset(clusterTime - localTime);
+                    console.log("Cluster Time Sync Offset:", clusterTime - localTime);
+                }
+            } catch (e) {
+                console.error("Time sync failed:", e);
+            }
+        };
+        syncTime();
+        const interval = setInterval(syncTime, 30000); // Sync every 30s
+        return () => clearInterval(interval);
+    }, [connection]);
 
     // Timer to update progress bars in real-time
     useEffect(() => {
         const timer = setInterval(() => {
-            setCurrentTime(Math.floor(Date.now() / 1000));
+            setCurrentTime(Math.floor(Date.now() / 1000) + timeOffset);
         }, 1000);
         return () => clearInterval(timer);
-    }, []);
+    }, [timeOffset]);
 
     const refreshData = useCallback(async () => {
         if (!program || !wallet || !connection) return;
@@ -450,8 +472,12 @@ export const EmployerDashboard = () => {
                                 {employees.map((emp, idx) => {
                                     const lastPaid = emp.lastPaid.toNumber();
                                     const interval = emp.interval.toNumber();
-                                    const progress = Math.min(100, Math.max(0, (currentTime - lastPaid) / interval * 100));
-                                    const isDue = progress >= 100;
+                                    const timeElapsed = currentTime - lastPaid;
+                                    const progress = Math.min(100, Math.max(0, (timeElapsed / interval) * 100));
+                                    
+                                    // Increased buffer to 20s for local testnet stability
+                                    const isDue = timeElapsed >= (interval + 20); 
+                                    const isVeryClose = timeElapsed >= interval && !isDue;
 
                                     return (
                                         <motion.div 
@@ -478,9 +504,9 @@ export const EmployerDashboard = () => {
                                             <div className="flex flex-col items-end gap-2 w-full sm:w-auto">
                                                 <div className="flex justify-between w-full sm:w-32 items-center mb-1">
                                                     <span className="text-[10px] text-gray-500 uppercase tracking-wider">
-                                                        {isDue ? 'Eligible' : 'Accruing'}
+                                                        {isDue ? 'Eligible' : isVeryClose ? 'Syncing...' : 'Accruing'}
                                                     </span>
-                                                    <span className={`text-[10px] font-mono ${isDue ? 'text-green-400' : 'text-primary'}`}>
+                                                    <span className={`text-[10px] font-mono ${isDue ? 'text-green-400' : isVeryClose ? 'text-yellow-500' : 'text-primary'}`}>
                                                         {Math.floor(progress)}%
                                                     </span>
                                                 </div>
@@ -488,20 +514,20 @@ export const EmployerDashboard = () => {
                                                     <motion.div 
                                                         animate={{ width: `${progress}%` }}
                                                         transition={{ duration: 1, ease: "linear" }}
-                                                        className={`h-full ${isDue ? 'bg-green-500' : 'bg-primary'}`}
+                                                        className={`h-full ${isDue ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : isVeryClose ? 'bg-yellow-500' : 'bg-primary'}`}
                                                     />
                                                 </div>
                                                 {isDue ? (
                                                     <button 
                                                         onClick={() => disbursePayment(emp.wallet.toBase58())}
                                                         disabled={actionLoading}
-                                                        className="mt-2 w-full sm:w-auto text-xs px-4 py-1.5 font-semibold bg-white text-black hover:bg-gray-200 rounded transition-colors"
+                                                        className="mt-2 w-full sm:w-auto text-xs px-4 py-1.5 font-semibold bg-white text-black hover:bg-gray-200 rounded shadow-[0_4px_14px_0_rgba(255,255,255,0.1)] transition-all active:scale-95"
                                                     >
                                                         Disburse
                                                     </button>
                                                 ) : (
-                                                    <div className="mt-2 text-[10px] text-gray-500 font-semibold px-4 py-1.5 bg-gray-900 border border-gray-800 rounded">
-                                                        Waiting for cycle
+                                                    <div className="mt-2 text-[10px] text-gray-500 font-bold px-4 py-1.5 bg-gray-900 border border-gray-800 rounded uppercase tracking-wider">
+                                                        {isVeryClose ? 'Finalizing...' : 'Waiting for cycle'}
                                                     </div>
                                                 )}
                                             </div>

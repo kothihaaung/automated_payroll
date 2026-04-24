@@ -17,14 +17,35 @@ export const EmployeeDashboard = () => {
     
     const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: '', message: '' });
     const [currentTime, setCurrentTime] = useState(Math.floor(Date.now() / 1000));
+    const [timeOffset, setTimeOffset] = useState(0);
+
+    // Sync with Cluster Time
+    useEffect(() => {
+        const syncTime = async () => {
+            if (!connection) return;
+            try {
+                const slot = await connection.getSlot();
+                const clusterTime = await connection.getBlockTime(slot);
+                if (clusterTime) {
+                    const localTime = Math.floor(Date.now() / 1000);
+                    setTimeOffset(clusterTime - localTime);
+                }
+            } catch (e) {
+                console.error("Time sync failed:", e);
+            }
+        };
+        syncTime();
+        const interval = setInterval(syncTime, 30000); // Sync every 30s
+        return () => clearInterval(interval);
+    }, [connection]);
 
     // Timer to update progress bars in real-time
     useEffect(() => {
         const timer = setInterval(() => {
-            setCurrentTime(Math.floor(Date.now() / 1000));
+            setCurrentTime(Math.floor(Date.now() / 1000) + timeOffset);
         }, 1000);
         return () => clearInterval(timer);
-    }, []);
+    }, [timeOffset]);
 
     const refreshData = useCallback(async () => {
         if (!program || !wallet || !connection) return;
