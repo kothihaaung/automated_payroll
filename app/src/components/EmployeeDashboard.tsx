@@ -1,3 +1,8 @@
+/*
+ * 💸 Automated Blockchain Payroll DApp - Employee Dashboard
+ * Author: Ko Thiha Aung (https://www.linkedin.com/in/kothihaaung/)
+ * License: Polyform Noncommercial License 1.0.0
+ */
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';

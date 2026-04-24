@@ -1,7 +1,9 @@
-pub mod constants;
-pub mod error;
-pub mod instructions;
-pub mod state;
+/*
+ * 💸 Automated Blockchain Payroll DApp
+ * Author: Ko Thiha Aung (https://www.linkedin.com/in/kothihaaung/)
+ * License: Polyform Noncommercial License 1.0.0
+ * For showcasing and learning purposes only. Commercial use requires compensation.
+ */
 
 use anchor_lang::prelude::*;
 use crate::error::*;
