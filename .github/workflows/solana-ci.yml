@@ -52,8 +52,6 @@ jobs:
             avm use latest
             echo "$HOME/.avm/bin" >> $GITHUB_PATH
           fi
-          # Install surfpool from GitHub source for bun-based tests
-          cargo install --git https://github.com/flyover-xyz/surfpool surfpool
 
       - name: Install JS Dependencies
         run: npm install
