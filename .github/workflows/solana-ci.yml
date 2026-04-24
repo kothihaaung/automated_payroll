@@ -49,8 +49,8 @@ jobs:
             avm use latest
             echo "$HOME/.avm/bin" >> $GITHUB_PATH
           fi
-          # Install surfpool for bun-based tests
-          cargo install surfpool
+          # Install surfpool for bun-based tests via NPM
+          npm install -g surfpool
 
       - name: Install JS Dependencies
         run: npm install
