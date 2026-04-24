@@ -76,8 +76,9 @@ jobs:
           done
           
           # Build, Deploy and Test
-          anchor build
-          anchor deploy
+          anchor keys sync
+          anchor build --ignore-keys
+          anchor deploy --ignore-keys
           bun test ./tests/automated_payroll.ts
         env:
           ANCHOR_PROVIDER_URL: http://127.0.0.1:8899
