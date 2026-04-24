@@ -18,14 +18,13 @@ async function run() {
     const provider = new anchor.AnchorProvider(connection, wallet, { commitment: 'confirmed' });
     anchor.setProvider(provider);
     
-    const programId = new PublicKey(idl.address || idl.metadata?.address);
     // @ts-ignore
-    const program = new anchor.Program(idl, programId, provider);
+    const program = new anchor.Program(idl, provider);
     
     // 1. Initialize
     console.log("Initializing payroll...");
-    const [payrollPda] = PublicKey.findProgramAddressSync([Buffer.from("payroll_config"), payer.publicKey.toBuffer()], programId);
-    const [vaultPda] = PublicKey.findProgramAddressSync([Buffer.from("vault"), payer.publicKey.toBuffer()], programId);
+    const [payrollPda] = PublicKey.findProgramAddressSync([Buffer.from("payroll_config"), payer.publicKey.toBuffer()], program.programId);
+    const [vaultPda] = PublicKey.findProgramAddressSync([Buffer.from("vault"), payer.publicKey.toBuffer()], program.programId);
     
     await program.methods.initializePayroll(new anchor.BN(100 * 1e9))
         .accounts({
@@ -36,8 +35,14 @@ async function run() {
         .rpc();
         
     // 2. Add Employee
-    console.log("Adding employee...");
     const employeeWallet = Keypair.generate().publicKey;
+    const [employeePda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("employee"), payer.publicKey.toBuffer(), employeeWallet.toBuffer()],
+        program.programId
+    );
+    console.log("Employee PDA:", employeePda.toBase58());
+    
+    console.log("Adding employee...");
     try {
         await program.methods.addEmployee(new anchor.BN(10 * 1e9), new anchor.BN(15))
             .accounts({
