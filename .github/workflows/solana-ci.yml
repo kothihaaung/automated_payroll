@@ -58,25 +58,34 @@ jobs:
 
       - name: Build and Test
         run: |
-          # 1. Setup identity and sync keys FIRST
+          # 1. Setup identity and sync keys
           mkdir -p /home/runner/.config/solana
           solana-keygen new --no-bip39-passphrase --outfile /home/runner/.config/solana/id.json || true
+          
+          # Force Solana CLI to talk ONLY to localhost
+          solana config set --url http://127.0.0.1:8899
+          
           anchor keys sync
           
-          # 2. Build (Heavy lifting - now IDs match)
+          # 2. Build
           anchor build
           
-          # 3. Start validator
-          rm -rf .anchor/ledger
+          # 3. Start validator (Ensure directories exist)
+          mkdir -p .anchor/ledger
+          rm -rf .anchor/ledger/*
           solana-test-validator --reset --quiet --ledger .anchor/ledger &
           
-          # 4. Wait for Slot 1
-          echo "Waiting for validator to reach Slot 1..."
+          # 4. Wait for Slot 1 (Strictly local)
+          echo "Waiting for local validator to reach Slot 1..."
           for i in {1..60}; do
-            SLOT=$(solana slot 2>/dev/null || echo "0")
-            if [ "$SLOT" -gt 0 ]; then
-              echo "Validator is ready at Slot $SLOT!"
+            SLOT=$(solana slot --url http://127.0.0.1:8899 2>/dev/null || echo "0")
+            # Local validator starts at slot 0, so we want a small number
+            if [ "$SLOT" -gt 0 ] && [ "$SLOT" -lt 1000 ]; then
+              echo "Local Validator is ready at Slot $SLOT!"
               break
+            fi
+            if [ "$SLOT" -gt 1000 ]; then
+               echo "Warning: Detected a non-local slot ($SLOT). Waiting for local..."
             fi
             sleep 1
           done
