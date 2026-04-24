@@ -16,6 +16,15 @@ export const EmployeeDashboard = () => {
     const [isLogging, setIsLogging] = useState(false);
     
     const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: '', message: '' });
+    const [currentTime, setCurrentTime] = useState(Math.floor(Date.now() / 1000));
+
+    // Timer to update progress bars in real-time
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentTime(Math.floor(Date.now() / 1000));
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
 
     const refreshData = useCallback(async () => {
         if (!program || !wallet || !connection) return;
@@ -26,7 +35,7 @@ export const EmployeeDashboard = () => {
             setWalletBalance(balance / LAMPORTS_PER_SOL);
 
             // Fetch all employee accounts matching the connected wallet
-            const accounts = await program.account.employee.all([
+            const accounts = await (program.account as any).employee.all([
                 {
                     dataSize: 97 // 8 + 32 + 32 + 8 + 8 + 8 + 1
                 },
@@ -38,7 +47,7 @@ export const EmployeeDashboard = () => {
                 }
             ]);
             
-            setEmployeeRecords(accounts.map(acc => ({
+            setEmployeeRecords(accounts.map((acc: any) => ({
                 publicKey: acc.publicKey,
                 ...acc.account
             })));
@@ -122,8 +131,7 @@ export const EmployeeDashboard = () => {
                         const lastPaid = record.lastPaid.toNumber();
                         
                         // Calculate time elapsed
-                        const now = Math.floor(Date.now() / 1000);
-                        const timeElapsed = Math.max(0, now - lastPaid);
+                        const timeElapsed = Math.max(0, currentTime - lastPaid);
                         const progressPercent = Math.min(100, (timeElapsed / interval) * 100);
                         const isDue = timeElapsed >= interval;
 
@@ -166,8 +174,8 @@ export const EmployeeDashboard = () => {
                                         
                                         <div className="w-full h-2.5 bg-gray-900 rounded-full overflow-hidden mb-4 border border-gray-800">
                                             <motion.div 
-                                                initial={{ width: 0 }}
                                                 animate={{ width: `${progressPercent}%` }}
+                                                transition={{ duration: 1, ease: "linear" }}
                                                 className={`h-full ${isDue ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-primary'}`}
                                             />
                                         </div>

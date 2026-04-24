@@ -19,9 +19,18 @@ export const EmployerDashboard = () => {
     const [pendingRandomEmployee, setPendingRandomEmployee] = useState<anchor.web3.Keypair | null>(null);
 
     const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: '', message: '' });
+    const [currentTime, setCurrentTime] = useState(Math.floor(Date.now() / 1000));
+
+    // Timer to update progress bars in real-time
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentTime(Math.floor(Date.now() / 1000));
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
 
     const refreshData = useCallback(async () => {
-        if (!program || !wallet) return;
+        if (!program || !wallet || !connection) return;
 
         try {
             const vaultPda = getVaultPda(wallet.publicKey);
@@ -30,7 +39,7 @@ export const EmployerDashboard = () => {
 
             const payrollPda = getPayrollPda(wallet.publicKey);
             try {
-                const config = await program.account.payrollConfig.fetch(payrollPda);
+                const config = await (program.account as any).payrollConfig.fetch(payrollPda);
                 setIsInitialized(true);
                 setBudget(config.totalBudget.toNumber() / LAMPORTS_PER_SOL);
             } catch (e) {
@@ -38,7 +47,7 @@ export const EmployerDashboard = () => {
             }
 
             // Fetch all employee accounts for this employer
-            const employeeAccounts = await program.account.employee.all([
+            const employeeAccounts = await (program.account as any).employee.all([
                 {
                     dataSize: 97 // 8 + 32 + 32 + 8 + 8 + 8 + 1
                 },
@@ -50,7 +59,7 @@ export const EmployerDashboard = () => {
                 }
             ]);
             
-            setEmployees(employeeAccounts.map(acc => ({
+            setEmployees(employeeAccounts.map((acc: any) => ({
                 publicKey: acc.publicKey,
                 ...acc.account
             })));
@@ -66,9 +75,20 @@ export const EmployerDashboard = () => {
     }, [refreshData, wallet?.publicKey]);
 
     const fundVault = async () => {
-        if (!wallet || !program) return;
+        if (!wallet || !program || !connection) return;
         setActionLoading(true);
         try {
+            // Check for gas funds
+            const balance = await connection.getBalance(wallet.publicKey);
+            if (balance < 1.1 * LAMPORTS_PER_SOL) {
+                const airdropSig = await connection.requestAirdrop(wallet.publicKey, 2 * LAMPORTS_PER_SOL);
+                const latestBlockhash = await connection.getLatestBlockhash();
+                await connection.confirmTransaction({
+                    signature: airdropSig,
+                    ...latestBlockhash
+                });
+            }
+
             const vaultPda = getVaultPda(wallet.publicKey);
             const tx = new anchor.web3.Transaction().add(
                 anchor.web3.SystemProgram.transfer({
@@ -94,13 +114,25 @@ export const EmployerDashboard = () => {
 
     const initializePayroll = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!wallet || !program) return;
+        if (!wallet || !program || !connection) return;
         
         const form = e.target as HTMLFormElement;
         const totalBudget = parseFloat(form.totalBudget.value);
 
         setActionLoading(true);
         try {
+            // Check if we need an airdrop first (only on local testnet)
+            const balance = await connection.getBalance(wallet.publicKey);
+            if (balance < 0.1 * LAMPORTS_PER_SOL) {
+                console.log("Requesting airdrop for fresh wallet...");
+                const airdropSig = await connection.requestAirdrop(wallet.publicKey, 2 * LAMPORTS_PER_SOL);
+                const latestBlockhash = await connection.getLatestBlockhash();
+                await connection.confirmTransaction({
+                    signature: airdropSig,
+                    ...latestBlockhash
+                });
+            }
+
             const payrollPda = getPayrollPda(wallet.publicKey);
             const vaultPda = getVaultPda(wallet.publicKey);
 
@@ -115,14 +147,19 @@ export const EmployerDashboard = () => {
             
             await refreshData();
         } catch (err: any) {
-            setAlertConfig({ isOpen: true, title: "Initialization Failed", message: err.message || err.toString() });
+            console.error("Initialization error:", err);
+            setAlertConfig({ 
+                isOpen: true, 
+                title: "Initialization Failed", 
+                message: err.message || "Ensure solana-test-validator is running and has enough funds." 
+            });
         } finally {
             setActionLoading(false);
         }
     };
 
     const disbursePayment = async (employeeWalletStr: string) => {
-        if (!wallet || !program) return;
+        if (!wallet || !program || !connection) return;
         
         setActionLoading(true);
         try {
@@ -159,7 +196,7 @@ export const EmployerDashboard = () => {
 
     const addEmployee = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!wallet || !program) return;
+        if (!wallet || !program || !connection) return;
         
         const form = e.target as HTMLFormElement;
         const employeeWallet = form.employeeWallet.value;
@@ -397,8 +434,7 @@ export const EmployerDashboard = () => {
                                 {employees.map((emp, idx) => {
                                     const lastPaid = emp.lastPaid.toNumber();
                                     const interval = emp.interval.toNumber();
-                                    const now = Math.floor(Date.now() / 1000);
-                                    const progress = Math.min(100, Math.max(0, (now - lastPaid) / interval * 100));
+                                    const progress = Math.min(100, Math.max(0, (currentTime - lastPaid) / interval * 100));
                                     const isDue = progress >= 100;
 
                                     return (
@@ -432,8 +468,8 @@ export const EmployerDashboard = () => {
                                                 </div>
                                                 <div className="w-full sm:w-32 h-1.5 bg-gray-800 rounded-full overflow-hidden">
                                                     <motion.div 
-                                                        initial={{ width: 0 }}
                                                         animate={{ width: `${progress}%` }}
+                                                        transition={{ duration: 1, ease: "linear" }}
                                                         className={`h-full ${isDue ? 'bg-green-500' : 'bg-primary'}`}
                                                     />
                                                 </div>

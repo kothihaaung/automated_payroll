@@ -10,6 +10,11 @@ export const Header = () => {
     const activeIdentityBase64 = identities.find(id => id.publicKeyBase58 === wallet?.publicKey.toBase58())?.secretKeyBase64 
         || (typeof localStorage !== 'undefined' ? localStorage.getItem('payroll_active_identity') : null);
 
+    const handleSwitch = (val: string) => {
+        switchIdentity(val);
+        window.location.reload();
+    };
+
     return (
         <header className="w-full border-b border-gray-800 bg-black/50 backdrop-blur-md sticky top-0 z-50">
             <div className="flex justify-between items-center px-4 sm:px-8 py-4 max-w-7xl mx-auto w-full">
@@ -38,7 +43,7 @@ export const Header = () => {
                         <div className="relative">
                             <select
                                 value={activeIdentityBase64 || ''}
-                                onChange={(e) => switchIdentity(e.target.value)}
+                                onChange={(e) => handleSwitch(e.target.value)}
                                 className="appearance-none bg-gray-900 border border-gray-700 text-white text-sm rounded-lg pl-3 pr-8 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer transition-colors"
                             >
                                 {identities.map((id, index) => (
