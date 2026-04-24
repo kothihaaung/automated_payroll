@@ -18,6 +18,17 @@ If you want to use this codebase for your project, business, or as a foundation 
 
 ---
 
+## 🏛️ Why Blockchain Payroll?
+
+*"Traditional payroll is a promise kept by people; Blockchain payroll is a promise kept by math."*
+
+*   **Trustless Transparency:** Funds are held in on-chain Escrow (Vault PDAs). Employees can verify salary backing in real-time.
+*   **Instant Global Settlement:** 24/7/365 payments with sub-second finality. No bank holidays, no 3-day ACH delays, and near-zero fees.
+*   **Immutable Audit Trail:** Every payment is a permanent, verifiable record on the Solana ledger.
+*   **Programmable Logic:** Smart contracts enforce payment intervals and amounts, removing human error and bias.
+
+---
+
 ## 🚀 Features
 
 - **On-Chain Payroll:** Automated disbursement via Solana smart contracts.
