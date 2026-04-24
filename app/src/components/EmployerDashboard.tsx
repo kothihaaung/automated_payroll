@@ -11,6 +11,7 @@ import { AlertModal } from './AlertModal';
 export const EmployerDashboard = () => {
     const { program, wallet, connection, getVaultPda, getPayrollPda, getEmployeePda, saveIdentity, resetSession } = usePayroll();
     const [vaultBalance, setVaultBalance] = useState<number | null>(null);
+    const [personalBalance, setPersonalBalance] = useState<number | null>(null);
     const [employees, setEmployees] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
@@ -34,8 +35,11 @@ export const EmployerDashboard = () => {
 
         try {
             const vaultPda = getVaultPda(wallet.publicKey);
-            const balance = await connection.getBalance(vaultPda);
-            setVaultBalance(balance / LAMPORTS_PER_SOL);
+            const vBalance = await connection.getBalance(vaultPda);
+            setVaultBalance(vBalance / LAMPORTS_PER_SOL);
+
+            const pBalance = await connection.getBalance(wallet.publicKey);
+            setPersonalBalance(pBalance / LAMPORTS_PER_SOL);
 
             const payrollPda = getPayrollPda(wallet.publicKey);
             try {
@@ -208,10 +212,10 @@ export const EmployerDashboard = () => {
             const employeeWalletPubkey = new PublicKey(employeeWallet);
             const employeePda = getEmployeePda(wallet.publicKey, employeeWalletPubkey);
 
-            await program.methods
+            await (program.methods as any)
                 .addEmployee(
                     new anchor.BN(Math.floor(salary * LAMPORTS_PER_SOL)),
-                    new anchor.BN(interval)
+                    new anchor.BN(interval * 60) // Convert minutes to seconds
                 )
                 .accounts({
                     employer: wallet.publicKey,
@@ -275,37 +279,15 @@ export const EmployerDashboard = () => {
     return (
         <div className="space-y-8 w-full">
             {/* Stats Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <motion.div 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-sm flex justify-between items-start"
-                >
-                    <div>
-                        <h3 className="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-2">Vault Balance</h3>
-                        <div className="flex items-end gap-2">
-                            <span className="text-4xl font-bold text-white">{vaultBalance?.toFixed(2)}</span>
-                            <span className="text-primary font-bold mb-1">SOL</span>
-                        </div>
-                    </div>
-                    <button 
-                        onClick={resetSession}
-                        className="p-2 hover:bg-gray-800 rounded-lg text-gray-500 hover:text-red-500 transition-colors"
-                        title="Reset Session"
-                    >
-                        <RotateCcw className="w-4 h-4" />
-                    </button>
-                </motion.div>
-
-                <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
                     className="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-sm"
                 >
-                    <h3 className="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-2">Total Budget</h3>
+                    <h3 className="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-2">Vault Balance</h3>
                     <div className="flex items-end gap-2">
-                        <span className="text-4xl font-bold text-white">{budget?.toFixed(2)}</span>
+                        <span className="text-4xl font-bold text-white">{vaultBalance !== null ? vaultBalance.toFixed(2) : '--'}</span>
                         <span className="text-secondary font-bold mb-1">SOL</span>
                     </div>
                 </motion.div>
@@ -313,13 +295,47 @@ export const EmployerDashboard = () => {
                 <motion.div 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-sm flex justify-between items-start"
+                >
+                    <div>
+                        <h3 className="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-2">My Wallet Balance</h3>
+                        <div className="flex items-end gap-2">
+                            <span className="text-4xl font-bold text-white">{personalBalance !== null ? personalBalance.toFixed(2) : '--'}</span>
+                            <span className="text-secondary font-bold mb-1">SOL</span>
+                        </div>
+                    </div>
+                    <button 
+                        onClick={async () => {
+                            if (!wallet || !connection) return;
+                            setActionLoading(true);
+                            try {
+                                const sig = await connection.requestAirdrop(wallet.publicKey, 2 * LAMPORTS_PER_SOL);
+                                await connection.confirmTransaction(sig);
+                                await refreshData();
+                            } catch (e) {
+                                console.error(e);
+                            } finally {
+                                setActionLoading(false);
+                            }
+                        }}
+                        disabled={actionLoading}
+                        className="text-[10px] px-2 py-1 bg-secondary/10 text-secondary border border-secondary/20 rounded hover:bg-secondary/20 transition-all font-bold uppercase tracking-tighter"
+                    >
+                        {actionLoading ? '...' : 'Refill SOL'}
+                    </button>
+                </motion.div>
+                
+                <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
                     className="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-sm"
                 >
-                    <h3 className="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-2">Active Employees</h3>
+                    <h3 className="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-2">Allocated Budget</h3>
                     <div className="flex items-end gap-2">
-                        <span className="text-4xl font-bold text-white">{employees.length}</span>
-                        <span className="text-gray-500 font-bold mb-1">Users</span>
+                        <span className="text-4xl font-bold text-white">{budget !== null ? budget.toFixed(2) : '--'}</span>
+                        <span className="text-secondary font-bold mb-1">SOL</span>
                     </div>
                 </motion.div>
             </div>
@@ -393,13 +409,13 @@ export const EmployerDashboard = () => {
                                     />
                                 </div>
                                 <div className="flex-1">
-                                    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Interval (s)</label>
+                                    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Interval (min)</label>
                                     <input 
                                         name="interval"
                                         type="number"
-                                        placeholder="30"
+                                        placeholder="5"
                                         className="w-full bg-black border border-gray-700 rounded-lg p-2.5 text-sm text-white focus:border-secondary focus:ring-1 focus:ring-secondary outline-none transition-all"
-                                        defaultValue="30"
+                                        defaultValue="5"
                                         required
                                     />
                                 </div>
@@ -454,15 +470,17 @@ export const EmployerDashboard = () => {
                                                         {emp.wallet.toBase58().slice(0, 16)}...
                                                     </p>
                                                     <p className="font-semibold text-white">
-                                                        {emp.salary.toNumber() / LAMPORTS_PER_SOL} SOL <span className="text-gray-500 font-normal text-sm">/ {interval}s</span>
+                                                        {emp.salary.toNumber() / LAMPORTS_PER_SOL} SOL <span className="text-gray-500 font-normal text-sm">/ {Math.floor(interval / 60)} min</span>
                                                     </p>
                                                 </div>
                                             </div>
                                             
                                             <div className="flex flex-col items-end gap-2 w-full sm:w-auto">
                                                 <div className="flex justify-between w-full sm:w-32 items-center mb-1">
-                                                    <span className="text-[10px] text-gray-500 uppercase tracking-wider">Progress</span>
-                                                    <span className="text-[10px] font-mono text-white">
+                                                    <span className="text-[10px] text-gray-500 uppercase tracking-wider">
+                                                        {isDue ? 'Eligible' : 'Accruing'}
+                                                    </span>
+                                                    <span className={`text-[10px] font-mono ${isDue ? 'text-green-400' : 'text-primary'}`}>
                                                         {Math.floor(progress)}%
                                                     </span>
                                                 </div>
@@ -473,13 +491,19 @@ export const EmployerDashboard = () => {
                                                         className={`h-full ${isDue ? 'bg-green-500' : 'bg-primary'}`}
                                                     />
                                                 </div>
-                                                <button 
-                                                    onClick={() => disbursePayment(emp.wallet.toBase58())}
-                                                    disabled={actionLoading || !isDue}
-                                                    className="mt-2 w-full sm:w-auto text-xs px-4 py-1.5 font-semibold bg-white text-black hover:bg-gray-200 disabled:bg-gray-800 disabled:text-gray-500 rounded transition-colors"
-                                                >
-                                                    Disburse
-                                                </button>
+                                                {isDue ? (
+                                                    <button 
+                                                        onClick={() => disbursePayment(emp.wallet.toBase58())}
+                                                        disabled={actionLoading}
+                                                        className="mt-2 w-full sm:w-auto text-xs px-4 py-1.5 font-semibold bg-white text-black hover:bg-gray-200 rounded transition-colors"
+                                                    >
+                                                        Disburse
+                                                    </button>
+                                                ) : (
+                                                    <div className="mt-2 text-[10px] text-gray-500 font-semibold px-4 py-1.5 bg-gray-900 border border-gray-800 rounded">
+                                                        Waiting for cycle
+                                                    </div>
+                                                )}
                                             </div>
                                         </motion.div>
                                     );

@@ -161,7 +161,7 @@ export const EmployeeDashboard = () => {
                                             </div>
                                             <div className="bg-black p-5 rounded-xl border border-gray-800">
                                                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Pay Interval</p>
-                                                <p className="text-3xl font-bold text-white">{interval} <span className="text-sm font-normal text-gray-400">sec</span></p>
+                                                <p className="text-3xl font-bold text-white">{Math.floor(interval / 60)} <span className="text-sm font-normal text-gray-400">min</span></p>
                                             </div>
                                         </div>
                                     </div>
