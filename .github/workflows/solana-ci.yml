@@ -63,7 +63,7 @@ jobs:
           solana-keygen new --no-bip39-passphrase --outfile /home/runner/.config/solana/id.json || true
           
           # Start validator in background
-          solana-test-validator --ledger .anchor/ledger --log > /dev/null 2>&1 &
+          solana-test-validator --reset --quiet --ledger .anchor/ledger > /dev/null 2>&1 &
           
           # Wait for validator to be ready
           echo "Waiting for validator..."
@@ -78,7 +78,8 @@ jobs:
           # Build, Deploy and Test
           anchor keys sync
           anchor build
-          anchor deploy
+          anchor program deploy
+          sleep 5
           bun test ./tests/automated_payroll.ts
         env:
           ANCHOR_PROVIDER_URL: http://127.0.0.1:8899
