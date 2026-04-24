@@ -252,11 +252,17 @@ export const EmployeeDashboard = () => {
                                                     </td>
                                                 </tr>
                                                 <tr className="hover:bg-white/5 transition-colors">
-                                                    <td className="px-6 py-4 text-sm text-gray-300 font-medium">Last On-Chain Payment Settled</td>
-                                                    <td className="px-6 py-4 text-sm text-primary font-bold">{salary} SOL</td>
+                                                    <td className="px-6 py-4 text-sm text-gray-300 font-medium">
+                                                        {timeElapsed < interval ? "Enrollment Verified & Cycle Started" : "Last On-Chain Payment Settled"}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-sm text-primary font-bold">
+                                                        {timeElapsed < interval ? "--" : `${salary} SOL`}
+                                                    </td>
                                                     <td className="px-6 py-4 text-sm text-gray-400 font-mono">{new Date(lastPaid * 1000).toLocaleString()}</td>
                                                     <td className="px-6 py-4">
-                                                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-green-500/10 text-green-400 border border-green-500/20">Settled</span>
+                                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${timeElapsed < interval ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" : "bg-green-500/10 text-green-400 border border-green-500/20"}`}>
+                                                            {timeElapsed < interval ? "Initialized" : "Settled"}
+                                                        </span>
                                                     </td>
                                                 </tr>
                                                 <tr className="hover:bg-white/5 transition-colors opacity-60">
