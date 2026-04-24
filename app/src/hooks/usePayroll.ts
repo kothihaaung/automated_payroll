@@ -173,6 +173,12 @@ export function usePayroll() {
         )[0];
     }, []);
 
+    const resetSession = useCallback(() => {
+        localStorage.removeItem('payroll_identities');
+        localStorage.removeItem('payroll_active_identity');
+        window.location.reload();
+    }, []);
+
     return { 
         wallet, 
         program, 
@@ -181,6 +187,7 @@ export function usePayroll() {
         activeIdentity: identities.find(id => id.publicKeyBase58 === wallet?.publicKey.toBase58()),
         switchIdentity,
         saveIdentity,
+        resetSession,
         getVaultPda,
         getPayrollPda,
         getEmployeePda,
