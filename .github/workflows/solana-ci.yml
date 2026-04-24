@@ -58,18 +58,19 @@ jobs:
 
       - name: Build and Test
         run: |
-          # 1. Build first (Heavy lifting)
-          anchor build
-          
-          # 2. Setup environment
+          # 1. Setup identity and sync keys FIRST
           mkdir -p /home/runner/.config/solana
           solana-keygen new --no-bip39-passphrase --outfile /home/runner/.config/solana/id.json || true
-          rm -rf .anchor/ledger
+          anchor keys sync
           
-          # 3. Start validator (Visible logs for debugging)
+          # 2. Build (Heavy lifting - now IDs match)
+          anchor build
+          
+          # 3. Start validator
+          rm -rf .anchor/ledger
           solana-test-validator --reset --quiet --ledger .anchor/ledger &
           
-          # 4. Wait for Slot 1 (The true sign of life)
+          # 4. Wait for Slot 1
           echo "Waiting for validator to reach Slot 1..."
           for i in {1..60}; do
             SLOT=$(solana slot 2>/dev/null || echo "0")
@@ -80,8 +81,7 @@ jobs:
             sleep 1
           done
           
-          # 5. Sync, Deploy and Test
-          anchor keys sync
+          # 5. Deploy and Test
           anchor program deploy
           sleep 5
           bun test ./tests/automated_payroll.ts
