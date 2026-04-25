@@ -4,20 +4,6 @@ A premium, real-time automated payroll system built on Solana. This repository i
 
 ---
 
-## ⚠️ Licensing & Usage (Showcase Only)
-
-**This project is NOT Open Source.** It is released under a **Source Available License** for showcase and learning purposes only.
-
-*   **Learning & Personal Use:** You are free to clone, study, and experiment with the code locally.
-*   **Commercial & Derivative Use:** You may **NOT** use this code for commercial purposes, build a product on top of it, or redistribute it as a paid service without explicit permission and **compensation**.
-
-### 💼 Get a Commercial License
-If you want to use this codebase for your project, business, or as a foundation for a production app, please contact the author to discuss licensing terms and compensation:
-
-**LinkedIn:** [linkedin.com/in/kothihaaung/](https://www.linkedin.com/in/kothihaaung/)
-
----
-
 ## 🏛️ Why Blockchain Payroll?
 
 *"Traditional payroll is a promise kept by people; Blockchain payroll is a promise kept by math."*
@@ -59,6 +45,12 @@ If you want to use this codebase for your project, business, or as a foundation 
    ```bash
    npm run dev
    ```
+
+---
+
+## 📄 License
+
+This project is licensed under the **MIT License** - see the [LICENSE.md](LICENSE.md) file for details.
 
 ---
 

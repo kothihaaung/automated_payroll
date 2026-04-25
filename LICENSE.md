@@ -1,30 +1,21 @@
-# License
+MIT License
 
-## Polyform Noncommercial License 1.0.0
+Copyright (c) 2026 Ko Thiha Aung
 
-### Acceptance
-By using this software, you agree to the terms of this license.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-### Grant
-The licensor grants you a non-exclusive, royalty-free, worldwide license to use, modify, and distribute this software for **Noncommercial Purposes** only.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-### Noncommercial Purposes
-Noncommercial Purposes means use that is not primarily intended for or directed towards commercial advantage or monetary compensation.
-
-### Prohibited Uses
-You may not use this software for any commercial purpose, including:
-1. Building a commercial application or service.
-2. Using the software within a company or for business operations.
-3. Selling the software or any derivative works.
-4. Using the software as a basis for a paid consulting or development service.
-
-### Compensation for Commercial Use
-If you wish to use this software for commercial purposes, build a product on top of it, or use it for any purpose other than personal learning and showcasing, you **MUST** obtain a commercial license from the author.
-
-To obtain a commercial license or discuss compensation for derivative works, please contact:
-**LinkedIn:** [linkedin.com/in/kothihaaung/](https://www.linkedin.com/in/kothihaaung/)
-
----
-
-### Disclaimer
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
