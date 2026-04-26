@@ -4,6 +4,10 @@ A premium, real-time automated payroll system built on Solana. This repository i
 
 ---
 
+## 📱 App Screenshots
+
+![App Showcase](./screenshots/payroll-dapp.png)
+
 ## 🏛️ Why Blockchain Payroll?
 
 *"Traditional payroll is a promise kept by people; Blockchain payroll is a promise kept by math."*
